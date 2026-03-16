@@ -309,8 +309,8 @@ h1 {
   place-items: center;
   padding: 0.45rem;
   border-radius: 1rem;
-  background: rgba(5, 17, 30, 0.36);
-  border: 1px solid rgba(123, 213, 250, 0.12);
+  background: rgba(3, 12, 24, 0.62);
+  border: 1px solid rgba(96, 180, 224, 0.18);
 }
 
 .rune-slot.fixed img,
