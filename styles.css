@@ -447,7 +447,7 @@ h1 {
   border-radius: 1.1rem;
   background:
     radial-gradient(circle at center, rgba(114, 226, 255, 0.2), rgba(8, 24, 40, 0.92));
-  border: 1px solid rgba(160, 240, 255, 0.45);
+  border: 1px solid rgba(96, 180, 224, 0.2);
 }
 
 .activation-rune.correct {
