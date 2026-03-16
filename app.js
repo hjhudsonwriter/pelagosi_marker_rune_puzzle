@@ -1,4 +1,3 @@
-
 const state = {
   started: false,
   stage: 0, // 0 intro, 1 restore missing rune, 2 activation, 3 solved
@@ -44,6 +43,10 @@ Object.values(audio).forEach(sound => {
   sound.volume = 0.85;
 });
 
+function getRuneImagePath(rune) {
+  return `assets/runes/rune_${rune}.png`;
+}
+
 function safePlay(sound) {
   if (!sound) return;
   sound.currentTime = 0;
@@ -78,7 +81,6 @@ function resetSequenceTracker() {
     button.disabled = false;
   });
 }
-
 
 function initializeIdle() {
   state.started = false;
@@ -123,6 +125,7 @@ function resetToStageOne() {
   elements.runeTokens.forEach(token => token.classList.remove('placed'));
   elements.tokenRow.classList.remove('hidden');
   document.body.classList.remove('stage-solved');
+
   setStatus(
     'Stage I, Restore the Spiral',
     'Determine which rune completes the pattern, then place it into the broken socket.'
@@ -147,7 +150,7 @@ function handleSocketPlacement(rune) {
 
     elements.socketSlot.classList.add('filled');
     elements.socketSlot.innerHTML = `
-      <img src="assets/runes/rune-${rune}.svg" alt="${rune} rune">
+      <img src="${getRuneImagePath(rune)}" alt="${rune} rune">
     `;
     token.classList.add('placed');
     clearSelectedRune();
@@ -198,6 +201,7 @@ function handleActivationPress(rune) {
       button.classList.add('correct');
       button.disabled = true;
     }
+
     safePlay(audio.runeClick);
 
     if (state.sequenceInput.length === state.sequenceSolution.length) {
@@ -219,6 +223,7 @@ function handleActivationPress(rune) {
 function failActivation() {
   state.locked = true;
   safePlay(audio.puzzleFail);
+
   setStatus(
     'The sea rejects the order',
     'A violent surge crashes inward. The ritual collapses and the Marker resets.'
@@ -238,6 +243,7 @@ function solvePuzzle() {
   state.stage = 3;
   state.locked = true;
   safePlay(audio.puzzleSolve);
+
   setStatus(
     'The Marker remembers',
     'Water drains from the base of the pillar as a seam opens into the caverns below.'
@@ -258,6 +264,7 @@ elements.closeRulesButton.addEventListener('click', () => {
 });
 
 elements.startTrialButton.addEventListener('click', startTrial);
+
 elements.playAgainButton.addEventListener('click', () => {
   closeModal(elements.successModal);
   resetToStageOne();
@@ -272,8 +279,10 @@ elements.resetButton.addEventListener('click', () => {
 elements.runeTokens.forEach(token => {
   token.addEventListener('click', () => {
     if (state.stage !== 1 || state.locked || token.classList.contains('placed')) return;
+
     const isSelected = token.classList.contains('selected');
     clearSelectedRune();
+
     if (!isSelected) {
       token.classList.add('selected');
       state.selectedRune = token.dataset.rune;
@@ -285,6 +294,7 @@ elements.runeTokens.forEach(token => {
       event.preventDefault();
       return;
     }
+
     token.classList.add('selected');
     state.selectedRune = token.dataset.rune;
     event.dataTransfer.setData('text/plain', token.dataset.rune);
@@ -313,7 +323,9 @@ elements.socketSlot.addEventListener('dragleave', () => {
 elements.socketSlot.addEventListener('drop', event => {
   event.preventDefault();
   elements.socketSlot.classList.remove('active-drop');
+
   if (state.stage !== 1 || state.locked) return;
+
   const rune = event.dataTransfer.getData('text/plain');
   handleSocketPlacement(rune);
 });
