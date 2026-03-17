@@ -9,7 +9,7 @@ const CLUE_TEXTS = [
   'The Marker is cycling through something deliberate. It feels less like language than recall.',
   'The first pattern lands cleanly. This is a remembered order, not a random flicker.',
   'A stronger echo follows: the damage to the Marker was deliberate. Something was taken from it.',
-  'The sequence resolves into a memory. The missing keystone was cut free and carried below.'
+  'The restored keystone reveals the truth: the Marker was not broken. The piece was removed deliberately, and its inner face bears an Aurushi sunburst.'
 ];
 
 const state = {
@@ -340,15 +340,46 @@ function solveTrial() {
   state.phase = 'solved';
   state.locked = true;
   setClueText(3);
+
   setStatus(
-    'The Marker remembers',
-    'The final reply resolves. Water drains from the base of the pillar as a seam opens below.'
+    'The keystone returns',
+    'The restored piece settles into the Marker. Pale runes bloom across the stone.'
   );
-  elements.memoryCaption.textContent = 'The remembered code is complete.';
+  elements.memoryCaption.textContent = 'The Marker accepts the returned piece.';
   document.body.classList.add('stage-solved');
 
-  window.setTimeout(() => safePlay(audio.cavernOpen), 650);
-  window.setTimeout(() => openModal(elements.successModal), 1800);
+  window.setTimeout(() => {
+    safePlay(audio.puzzleSolve);
+  }, 120);
+
+  window.setTimeout(() => {
+    setStatus(
+      'The tide steadies',
+      'The Marker sinks slowly beneath the sea. The surrounding water calms and stabilises.'
+    );
+    elements.memoryCaption.textContent = 'The tide stills.';
+  }, 900);
+
+  window.setTimeout(() => {
+    setStatus(
+      'A deliberate removal',
+      'The Marker was never broken. On the inner face of the keystone, an etched sunburst reveals Aurushi involvement.'
+    );
+    elements.memoryCaption.textContent = 'The truth rises with the silence.';
+  }, 2100);
+
+  window.setTimeout(() => {
+    setStatus(
+      'Something shifts below',
+      'The sea closes slowly over the stone. The runes dim. For a moment the water is perfectly still. Then far below… something shifts.'
+    );
+    elements.memoryCaption.textContent = 'The sea is still.';
+    safePlay(audio.cavernOpen);
+  }, 3400);
+
+  window.setTimeout(() => {
+    openModal(elements.successModal);
+  }, 4700);
 }
 
 function handleRuneInput(rune, button) {
