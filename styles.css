@@ -30,6 +30,28 @@ body {
     linear-gradient(180deg, #04101d 0%, #08192a 34%, #04111f 100%);
   font-family: "Cormorant Garamond", serif;
   overflow-x: hidden;
+  position: relative;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, rgba(214, 252, 255, 0.26), rgba(126, 232, 255, 0.12) 26%, transparent 64%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 12;
+}
+
+body.screen-flash::after {
+  animation: screenFlash 720ms ease-out;
+}
+
+@keyframes screenFlash {
+  0% { opacity: 0; }
+  16% { opacity: 0.7; }
+  100% { opacity: 0; }
 }
 
 button {
@@ -229,6 +251,40 @@ h1 {
   pointer-events: none;
 }
 
+.marker-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(201, 250, 255, 0.34), rgba(102, 216, 255, 0.14) 28%, transparent 58%),
+    radial-gradient(circle at 50% 78%, rgba(123, 232, 255, 0.2), transparent 48%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.marker-frame.round-success-flash::after {
+  animation: markerPulseFlash 950ms ease-out;
+}
+
+@keyframes markerPulseFlash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.marker-frame.deep-tremor {
+  animation: deepTremor 1100ms ease-in-out;
+}
+
+@keyframes deepTremor {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  18% { transform: translate3d(-2px, 1px, 0); }
+  36% { transform: translate3d(2px, -1px, 0); }
+  54% { transform: translate3d(-1px, 1px, 0); }
+  72% { transform: translate3d(1px, -1px, 0); }
+}
+
 .marker-image {
   position: absolute;
   inset: 0;
@@ -368,6 +424,46 @@ h1 {
   z-index: 1;
 }
 
+.phase-prompt {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  transform: translate(-50%, -50%) scale(0.96);
+  padding: 0.8rem 1.35rem;
+  border-radius: 999px;
+  background: rgba(3, 12, 24, 0.8);
+  border: 1px solid rgba(176, 244, 255, 0.26);
+  box-shadow: 0 0 22px rgba(111, 217, 255, 0.18);
+  color: #effcff;
+  font-family: "Uncial Antiqua", serif;
+  font-size: 1rem;
+  letter-spacing: 0.08rem;
+  text-align: center;
+  opacity: 0;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.phase-prompt.active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.sequence-display.awaiting-input {
+  border-color: rgba(176, 244, 255, 0.36);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 34px rgba(123, 232, 255, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.34);
+}
+
+.sequence-display.awaiting-input .sequence-halo {
+  transform: scale(1.08);
+  border-color: rgba(186, 246, 255, 0.34);
+  box-shadow: 0 0 34px rgba(125, 226, 255, 0.22);
+}
+
 .placeholder-glyph {
   font-size: 2.2rem;
   color: rgba(184, 244, 255, 0.76);
@@ -410,6 +506,8 @@ h1 {
   display: grid;
   place-items: center;
   gap: 0.3rem;
+  position: relative;
+  overflow: hidden;
 }
 
 .memory-rune-button img {
@@ -424,13 +522,29 @@ h1 {
   text-shadow: 0 0 10px rgba(91, 205, 255, 0.12);
 }
 
-.memory-rune-button:hover:not(:disabled),
-.memory-rune-button.correct {
+.memory-rune-button:hover:not(:disabled) {
   transform: translateY(-3px);
   box-shadow: 0 0 22px rgba(124, 228, 255, 0.2);
   border-color: rgba(170, 240, 255, 0.86);
 }
 
+.memory-rune-button.correct {
+  transform: translateY(-3px);
+  background: rgba(8, 31, 52, 0.9);
+  border-color: rgba(196, 248, 255, 0.95);
+  box-shadow:
+    0 0 28px rgba(124, 228, 255, 0.3),
+    inset 0 0 18px rgba(123, 232, 255, 0.14);
+}
+
+.memory-rune-button.correct img {
+  filter: drop-shadow(0 0 22px rgba(196, 248, 255, 0.42));
+}
+
+.memory-rune-button.correct span {
+  color: #f3fdff;
+  text-shadow: 0 0 14px rgba(140, 232, 255, 0.24);
+}
 .memory-rune-button:disabled {
   opacity: 0.42;
   cursor: default;
@@ -527,6 +641,14 @@ h1 {
   opacity: 0;
   transform: scale(0.75);
   transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.input-slot.filled {
+  border-color: rgba(186, 246, 255, 0.7);
+  background: rgba(10, 32, 52, 0.84);
+  box-shadow:
+    0 0 16px rgba(124, 228, 255, 0.16),
+    inset 0 0 18px rgba(112, 225, 255, 0.08);
 }
 
 .input-slot.filled img {
@@ -632,6 +754,59 @@ h1 {
   line-height: 1.5;
 }
 
+.round-success-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.4rem;
+  text-align: center;
+  background:
+    radial-gradient(circle at center, rgba(126, 234, 255, 0.16), rgba(7, 16, 27, 0.04) 42%, rgba(3, 10, 18, 0.28));
+  opacity: 0;
+  transition: opacity 220ms ease;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.round-success-overlay.active {
+  opacity: 1;
+}
+
+.round-success-wave {
+  position: absolute;
+  inset: 12% 8%;
+  border-radius: 50%;
+  border: 2px solid rgba(188, 248, 255, 0.32);
+  filter: blur(1px);
+  animation: roundSuccessWave 1100ms ease-out;
+}
+
+.round-success-title,
+.round-success-text {
+  margin: 0;
+  font-family: "Uncial Antiqua", serif;
+  color: #effcff;
+  text-shadow: 0 0 18px rgba(184, 244, 255, 0.34);
+}
+
+.round-success-title {
+  font-size: clamp(1.4rem, 2vw, 2rem);
+  letter-spacing: 0.1rem;
+}
+
+.round-success-text {
+  font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+  letter-spacing: 0.16rem;
+  color: #c8f4ff;
+}
+
+@keyframes roundSuccessWave {
+  from { transform: scale(0.62); opacity: 0.9; }
+  to { transform: scale(1.22); opacity: 0; }
+}
+
 .surge-overlay {
   inset: 0;
   display: grid;
@@ -683,6 +858,39 @@ h1 {
   40% { transform: translateX(7px); }
   60% { transform: translateX(-5px); }
   80% { transform: translateX(5px); }
+}
+
+body.round-awake-1 .marker-image {
+  filter: brightness(1.04) saturate(1.04) drop-shadow(0 0 30px rgba(120, 225, 255, 0.22));
+}
+
+body.round-awake-1 .water-ring {
+  opacity: 0.42;
+  box-shadow:
+    0 0 0 1px rgba(118, 233, 255, 0.08) inset,
+    0 0 28px rgba(78, 187, 245, 0.2);
+}
+
+body.round-awake-1 .sequence-halo {
+  border-color: rgba(172, 244, 255, 0.24);
+  box-shadow: 0 0 34px rgba(109, 211, 255, 0.16);
+}
+
+body.round-awake-2 .marker-image {
+  filter: brightness(1.1) saturate(1.08) drop-shadow(0 0 34px rgba(142, 236, 255, 0.26));
+}
+
+body.round-awake-2 .water-ring {
+  opacity: 0.62;
+  transform: translateX(50%) scale(1.04);
+  box-shadow:
+    0 0 0 1px rgba(118, 233, 255, 0.1) inset,
+    0 0 36px rgba(78, 187, 245, 0.24);
+}
+
+body.round-awake-2 .sequence-halo {
+  border-color: rgba(194, 248, 255, 0.34);
+  box-shadow: 0 0 42px rgba(125, 226, 255, 0.22);
 }
 
 body.stage-solved .marker-image {
