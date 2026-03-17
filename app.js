@@ -5,6 +5,12 @@ const ROUND_CONFIG = [
   { length: 5, flash: 520, gap: 180 }
 ];
 
+const ROUND_SUCCESS_COPY = [
+  { title: 'ROUND I COMPLETE', text: 'THE MARKER STIRS' },
+  { title: 'ROUND II COMPLETE', text: 'THE MEMORY DEEPENS' },
+  { title: 'ROUND III COMPLETE', text: 'THE MARKER ACCEPTS THE RETURN' }
+];
+
 const CLUE_TEXTS = [
   'The Marker is cycling through something deliberate. It feels less like language than recall.',
   'The first pattern lands cleanly. This is a remembered order, not a random flicker.',
@@ -44,7 +50,11 @@ const elements = {
   sequencePlaceholder: document.getElementById('sequencePlaceholder'),
   inputRunes: document.getElementById('inputRunes'),
   inputButtons: Array.from(document.querySelectorAll('.memory-rune-button')),
-  inputTracker: document.getElementById('inputTracker')
+  inputTracker: document.getElementById('inputTracker'),
+  phasePrompt: document.getElementById('phasePrompt'),
+  roundSuccessOverlay: document.getElementById('roundSuccessOverlay'),
+  roundSuccessTitle: document.getElementById('roundSuccessTitle'),
+  roundSuccessText: document.getElementById('roundSuccessText')
 };
 
 const audio = {
@@ -59,6 +69,10 @@ Object.values(audio).forEach(sound => {
   sound.preload = 'auto';
   sound.volume = 0.85;
 });
+
+let phasePromptTimer = null;
+let roundSuccessTimer = null;
+let deepTremorTimer = null;
 
 function getRuneImagePath(rune) {
   return `assets/runes/rune_${rune}.png`;
@@ -103,7 +117,7 @@ function setInputEnabled(enabled) {
 }
 
 function clearDisplay() {
-  elements.sequenceDisplay.classList.remove('showing');
+  elements.sequenceDisplay.classList.remove('showing', 'awaiting-input');
   elements.displayRuneImage.classList.add('hidden');
   elements.sequencePlaceholder.classList.remove('hidden');
 }
@@ -176,13 +190,101 @@ function updateRoundUI() {
   });
 }
 
+function setRoundAura(level = 0) {
+  document.body.classList.remove('round-awake-1', 'round-awake-2');
+
+  if (level >= 1) {
+    document.body.classList.add('round-awake-1');
+  }
+
+  if (level >= 2) {
+    document.body.classList.add('round-awake-2');
+  }
+}
+
+function hidePhasePrompt() {
+  window.clearTimeout(phasePromptTimer);
+  elements.phasePrompt.classList.remove('active');
+  elements.phasePrompt.classList.add('hidden');
+}
+
+function showPhasePrompt(text, duration = 900) {
+  window.clearTimeout(phasePromptTimer);
+
+  elements.phasePrompt.textContent = text;
+  elements.phasePrompt.classList.remove('hidden');
+
+  window.requestAnimationFrame(() => {
+    elements.phasePrompt.classList.add('active');
+  });
+
+  phasePromptTimer = window.setTimeout(() => {
+    elements.phasePrompt.classList.remove('active');
+
+    window.setTimeout(() => {
+      elements.phasePrompt.classList.add('hidden');
+    }, 260);
+  }, duration);
+}
+
+function hideRoundSuccessOverlay() {
+  window.clearTimeout(roundSuccessTimer);
+  elements.roundSuccessOverlay.classList.remove('active');
+  elements.roundSuccessOverlay.classList.add('hidden');
+  elements.markerFrame.classList.remove('round-success-flash');
+  document.body.classList.remove('screen-flash');
+}
+
+function showRoundSuccessOverlay(title, text, duration = 1250) {
+  window.clearTimeout(roundSuccessTimer);
+
+  elements.roundSuccessTitle.textContent = title;
+  elements.roundSuccessText.textContent = text;
+  elements.roundSuccessOverlay.classList.remove('hidden');
+
+  window.requestAnimationFrame(() => {
+    elements.roundSuccessOverlay.classList.add('active');
+  });
+
+  elements.markerFrame.classList.add('round-success-flash');
+  document.body.classList.add('screen-flash');
+
+  roundSuccessTimer = window.setTimeout(() => {
+    elements.roundSuccessOverlay.classList.remove('active');
+    elements.markerFrame.classList.remove('round-success-flash');
+    document.body.classList.remove('screen-flash');
+
+    window.setTimeout(() => {
+      elements.roundSuccessOverlay.classList.add('hidden');
+    }, 300);
+  }, duration);
+}
+
+function triggerDeepTremor(duration = 1100) {
+  window.clearTimeout(deepTremorTimer);
+  elements.markerFrame.classList.add('deep-tremor');
+
+  deepTremorTimer = window.setTimeout(() => {
+    elements.markerFrame.classList.remove('deep-tremor');
+  }, duration);
+}
+
 function resetVisualState() {
   state.runToken += 1;
-  document.body.classList.remove('stage-solved');
-  elements.markerFrame.classList.remove('shake');
+
+  document.body.classList.remove('stage-solved', 'screen-flash', 'round-awake-1', 'round-awake-2');
+  elements.markerFrame.classList.remove('shake', 'round-success-flash', 'deep-tremor');
   elements.surgeOverlay.classList.remove('active');
+
+  window.clearTimeout(phasePromptTimer);
+  window.clearTimeout(roundSuccessTimer);
+  window.clearTimeout(deepTremorTimer);
+
+  hidePhasePrompt();
+  hideRoundSuccessOverlay();
   setInputEnabled(false);
   clearDisplay();
+
   elements.memoryCaption.textContent = 'The Marker is still.';
   elements.roundLabel.textContent = `Round 0 of ${ROUND_CONFIG.length}`;
   elements.roundDescription.textContent = 'Three remembered sequences. Each one grows longer and faster.';
@@ -211,13 +313,19 @@ async function playRoundSequence(roundToken) {
   const config = ROUND_CONFIG[state.roundIndex];
   const sequence = getRoundSequence();
 
+  clearDisplay();
+  hideRoundSuccessOverlay();
+  elements.sequenceDisplay.classList.remove('awaiting-input');
+
   elements.memoryCaption.textContent = 'Watch the Marker.';
   setStatus(
     `Round ${state.roundIndex + 1}, Observe`,
     'The runes are moving. Hold the order in memory.'
   );
 
-  await sleep(500);
+  showPhasePrompt('WATCH THE MARKER', 850);
+
+  await sleep(650);
 
   for (const rune of sequence) {
     if (roundToken !== state.runToken) return;
@@ -231,6 +339,14 @@ async function playRoundSequence(roundToken) {
     clearDisplay();
     await sleep(config.gap);
   }
+
+  if (roundToken !== state.runToken) return;
+
+  clearDisplay();
+  elements.sequenceDisplay.classList.add('awaiting-input');
+  showPhasePrompt('REPEAT THE ORDER', 950);
+
+  await sleep(450);
 
   if (roundToken !== state.runToken) return;
 
@@ -254,6 +370,7 @@ function startRound(roundIndex) {
   updateRoundUI();
   setInputEnabled(false);
   createInputTracker(ROUND_CONFIG[roundIndex].length);
+  clearDisplay();
 
   const roundToken = ++state.runToken;
   playRoundSequence(roundToken);
@@ -267,12 +384,7 @@ function resetTrialAndRestart() {
   state.locked = false;
   state.masterSequence = buildMasterSequence(ROUND_CONFIG[ROUND_CONFIG.length - 1].length);
 
-  document.body.classList.remove('stage-solved');
-  elements.markerFrame.classList.remove('shake');
-  elements.surgeOverlay.classList.remove('active');
-  clearDisplay();
-  setClueText(0);
-
+  resetVisualState();
   startRound(0);
 }
 
@@ -287,21 +399,29 @@ function handleRoundSuccess() {
   safePlay(audio.puzzleSolve);
 
   const finishedRound = state.roundIndex + 1;
+  const successCopy = ROUND_SUCCESS_COPY[state.roundIndex] || ROUND_SUCCESS_COPY[0];
+
   elements.roundPips[state.roundIndex]?.classList.add('complete');
   elements.roundPips[state.roundIndex]?.classList.remove('current');
 
   if (finishedRound === 1) {
+    setRoundAura(1);
     setClueText(1);
     setStatus(
       'The Marker listens',
-      'The first sequence lands true. The pattern tightens and begins again.'
+      'The first sequence lands true. The Marker stirs and calls for more.'
     );
+    elements.memoryCaption.textContent = 'The Marker stirs.';
+    showRoundSuccessOverlay(successCopy.title, successCopy.text, 1250);
   } else if (finishedRound === 2) {
+    setRoundAura(2);
     setClueText(2);
     setStatus(
-      'The Marker yields a memory-fragment',
-      'The second reply is accepted. A sharper echo suggests the missing piece was taken, not worn away.'
+      'The memory deepens',
+      'The second reply is accepted. The glow strengthens and the tide tightens around the stone.'
     );
+    elements.memoryCaption.textContent = 'The memory deepens.';
+    showRoundSuccessOverlay(successCopy.title, successCopy.text, 1250);
   }
 
   if (finishedRound >= ROUND_CONFIG.length) {
@@ -311,13 +431,15 @@ function handleRoundSuccess() {
 
   window.setTimeout(() => {
     startRound(state.roundIndex + 1);
-  }, 1350);
+  }, 1900);
 }
 
 function handleFailure() {
   state.phase = 'failed';
   state.locked = true;
   setInputEnabled(false);
+  hidePhasePrompt();
+  hideRoundSuccessOverlay();
   safePlay(audio.puzzleFail);
 
   setStatus(
@@ -340,6 +462,9 @@ function solveTrial() {
   state.phase = 'solved';
   state.locked = true;
   setClueText(3);
+  setRoundAura(2);
+
+  showRoundSuccessOverlay('ROUND III COMPLETE', 'THE MARKER ACCEPTS THE RETURN', 1500);
 
   setStatus(
     'The keystone returns',
@@ -375,6 +500,7 @@ function solveTrial() {
     );
     elements.memoryCaption.textContent = 'The sea is still.';
     safePlay(audio.cavernOpen);
+    triggerDeepTremor(1100);
   }, 3400);
 
   window.setTimeout(() => {
@@ -390,12 +516,12 @@ function handleRuneInput(rune, button) {
   const expectedRune = sequence[inputIndex];
 
   state.currentInput.push(rune);
+  elements.sequenceDisplay.classList.remove('awaiting-input');
 
   if (rune === expectedRune) {
     safePlay(audio.runeClick);
     fillInputSlot(inputIndex, rune, false);
     button.classList.add('correct');
-    window.setTimeout(() => button.classList.remove('correct'), 220);
 
     if (state.currentInput.length === sequence.length) {
       handleRoundSuccess();
@@ -408,7 +534,11 @@ function handleRuneInput(rune, button) {
   } else {
     fillInputSlot(inputIndex, rune, true);
     button.classList.add('wrong');
-    window.setTimeout(() => button.classList.remove('wrong'), 320);
+
+    window.setTimeout(() => {
+      button.classList.remove('wrong');
+    }, 320);
+
     handleFailure();
   }
 }
