@@ -479,10 +479,10 @@ h1 {
   left: 50%;
   bottom: 11%;
   transform: translateX(-50%);
-  width: min(84%, 30rem);
+  width: min(92%, 52rem);
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.85rem;
   z-index: 4;
 }
 
@@ -495,8 +495,8 @@ h1 {
 }
 
 .memory-rune-button {
-  min-height: 8rem;
-  padding: 0.55rem 0.4rem 0.8rem;
+  min-height: 7rem;
+  padding: 0.45rem 0.3rem 0.65rem;
   border-radius: 1.1rem;
   background: rgba(3, 12, 24, 0.72);
   border: 1px solid rgba(96, 180, 224, 0.2);
@@ -505,21 +505,24 @@ h1 {
     0 10px 24px rgba(0, 0, 0, 0.3);
   display: grid;
   place-items: center;
-  gap: 0.3rem;
+  gap: 0.25rem;
   position: relative;
   overflow: hidden;
 }
 
 .memory-rune-button img {
-  width: 4.4rem;
+  width: 3.6rem;
   pointer-events: none;
   filter: drop-shadow(0 0 14px rgba(124, 228, 255, 0.24));
 }
 
 .memory-rune-button span {
   color: rgba(227, 244, 255, 0.92);
-  letter-spacing: 0.06rem;
+  letter-spacing: 0.04rem;
   text-shadow: 0 0 10px rgba(91, 205, 255, 0.12);
+  font-size: 0.95rem;
+  line-height: 1.08;
+  text-align: center;
 }
 
 .memory-rune-button:hover:not(:disabled) {
@@ -959,19 +962,25 @@ body.stage-solved .water-ring {
   }
 
   .input-runes {
-    width: min(94%, 24rem);
-    bottom: 9.5%;
-    gap: 0.65rem;
-  }
+  width: min(96%, 26.5rem);
+  bottom: 8.8%;
+  gap: 0.45rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
 
   .memory-rune-button {
-    min-height: 6.5rem;
-  }
+  min-height: 5.4rem;
+  padding: 0.35rem 0.2rem 0.45rem;
+}
 
   .memory-rune-button img {
-    width: 3.6rem;
-  }
+  width: 2.5rem;
+}
 
+  .memory-rune-button span {
+  font-size: 0.76rem;
+}
+  
   .hero-copy {
     font-size: 1.12rem;
   }
