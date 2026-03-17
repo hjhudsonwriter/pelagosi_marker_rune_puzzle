@@ -1,12 +1,25 @@
+const RUNES = ['anchor', 'tide', 'depth'];
+const ROUND_CONFIG = [
+  { length: 3, flash: 950, gap: 260 },
+  { length: 4, flash: 700, gap: 220 },
+  { length: 5, flash: 520, gap: 180 }
+];
+
+const CLUE_TEXTS = [
+  'The Marker is cycling through something deliberate. It feels less like language than recall.',
+  'The first pattern lands cleanly. This is a remembered order, not a random flicker.',
+  'A stronger echo follows: the damage to the Marker was deliberate. Something was taken from it.',
+  'The sequence resolves into a memory. The missing keystone was cut free and carried below.'
+];
+
 const state = {
   started: false,
-  stage: 0, // 0 intro, 1 restore missing rune, 2 activation, 3 solved
-  selectedRune: null,
-  missingRune: 'tide',
-  sequenceSolution: ['tide', 'depth', 'anchor'],
-  sequenceInput: [],
-  socketFilled: false,
-  locked: false
+  phase: 'idle', // idle, showing, input, success, failed, solved
+  roundIndex: -1,
+  masterSequence: [],
+  currentInput: [],
+  locked: false,
+  runToken: 0
 };
 
 const elements = {
@@ -19,15 +32,19 @@ const elements = {
   playAgainButton: document.getElementById('playAgainButton'),
   stageLabel: document.getElementById('stageLabel'),
   statusText: document.getElementById('statusText'),
-  socketSlot: document.getElementById('socketSlot'),
-  tokenRow: document.getElementById('tokenRow'),
-  runeTokens: Array.from(document.querySelectorAll('.rune-token')),
-  activationRunes: document.getElementById('activationRunes'),
-  activationButtons: Array.from(document.querySelectorAll('.activation-rune')),
-  sequencePanel: document.getElementById('sequencePanel'),
-  trackerDots: Array.from(document.querySelectorAll('.tracker-dot')),
+  roundDescription: document.getElementById('roundDescription'),
+  roundLabel: document.getElementById('roundLabel'),
+  roundPips: Array.from(document.querySelectorAll('.round-pip')),
+  clueText: document.getElementById('clueText'),
   markerFrame: document.getElementById('markerFrame'),
-  surgeOverlay: document.getElementById('surgeOverlay')
+  surgeOverlay: document.getElementById('surgeOverlay'),
+  memoryCaption: document.getElementById('memoryCaption'),
+  sequenceDisplay: document.getElementById('sequenceDisplay'),
+  displayRuneImage: document.getElementById('displayRuneImage'),
+  sequencePlaceholder: document.getElementById('sequencePlaceholder'),
+  inputRunes: document.getElementById('inputRunes'),
+  inputButtons: Array.from(document.querySelectorAll('.memory-rune-button')),
+  inputTracker: document.getElementById('inputTracker')
 };
 
 const audio = {
@@ -55,6 +72,10 @@ function safePlay(sound) {
   });
 }
 
+function sleep(ms) {
+  return new Promise(resolve => window.setTimeout(resolve, ms));
+}
+
 function setStatus(stageText, bodyText) {
   elements.stageLabel.textContent = stageText;
   elements.statusText.textContent = bodyText;
@@ -68,38 +89,117 @@ function closeModal(modal) {
   modal.classList.add('hidden');
 }
 
-function clearSelectedRune() {
-  state.selectedRune = null;
-  elements.runeTokens.forEach(token => token.classList.remove('selected'));
+function setClueText(index) {
+  elements.clueText.textContent = CLUE_TEXTS[index] || CLUE_TEXTS[0];
 }
 
-function resetSequenceTracker() {
-  state.sequenceInput = [];
-  elements.trackerDots.forEach(dot => dot.classList.remove('filled'));
-  elements.activationButtons.forEach(button => {
-    button.classList.remove('correct', 'wrong');
-    button.disabled = false;
+function setInputEnabled(enabled) {
+  elements.inputButtons.forEach(button => {
+    button.disabled = !enabled;
+    if (!enabled) {
+      button.classList.remove('correct', 'wrong');
+    }
   });
+}
+
+function clearDisplay() {
+  elements.sequenceDisplay.classList.remove('showing');
+  elements.displayRuneImage.classList.add('hidden');
+  elements.sequencePlaceholder.classList.remove('hidden');
+}
+
+function showRune(rune) {
+  elements.displayRuneImage.src = getRuneImagePath(rune);
+  elements.displayRuneImage.alt = `${rune} rune`;
+  elements.sequencePlaceholder.classList.add('hidden');
+  elements.displayRuneImage.classList.remove('hidden');
+  elements.sequenceDisplay.classList.add('showing');
+}
+
+function buildMasterSequence(maxLength = 5) {
+  const sequence = [];
+
+  while (sequence.length < maxLength) {
+    const previous = sequence[sequence.length - 1] || null;
+    const pool = RUNES.filter(rune => rune !== previous);
+    const nextRune = pool[Math.floor(Math.random() * pool.length)];
+    sequence.push(nextRune);
+  }
+
+  return sequence;
+}
+
+function getRoundSequence() {
+  if (state.roundIndex < 0) return [];
+  return state.masterSequence.slice(0, ROUND_CONFIG[state.roundIndex].length);
+}
+
+function createInputTracker(length) {
+  elements.inputTracker.innerHTML = '';
+
+  for (let index = 0; index < length; index += 1) {
+    const slot = document.createElement('div');
+    slot.className = 'input-slot';
+
+    const image = document.createElement('img');
+    image.alt = '';
+    slot.appendChild(image);
+
+    elements.inputTracker.appendChild(slot);
+  }
+}
+
+function fillInputSlot(index, rune, isWrong = false) {
+  const slots = Array.from(elements.inputTracker.querySelectorAll('.input-slot'));
+  const slot = slots[index];
+  if (!slot) return;
+
+  const image = slot.querySelector('img');
+  image.src = getRuneImagePath(rune);
+  slot.classList.add('filled');
+
+  if (isWrong) {
+    slot.classList.add('wrong');
+  }
+}
+
+function updateRoundUI() {
+  const visibleRound = state.roundIndex + 1;
+  const config = ROUND_CONFIG[state.roundIndex] || { length: 0 };
+
+  elements.roundLabel.textContent = `Round ${visibleRound} of ${ROUND_CONFIG.length}`;
+  elements.roundDescription.textContent = `Round ${visibleRound} remembers ${config.length} runes before the sequence fades.`;
+
+  elements.roundPips.forEach((pip, index) => {
+    pip.classList.toggle('complete', index < state.roundIndex);
+    pip.classList.toggle('current', index === state.roundIndex);
+  });
+}
+
+function resetVisualState() {
+  state.runToken += 1;
+  document.body.classList.remove('stage-solved');
+  elements.markerFrame.classList.remove('shake');
+  elements.surgeOverlay.classList.remove('active');
+  setInputEnabled(false);
+  clearDisplay();
+  elements.memoryCaption.textContent = 'The Marker is still.';
+  elements.roundLabel.textContent = `Round 0 of ${ROUND_CONFIG.length}`;
+  elements.roundDescription.textContent = 'Three remembered sequences. Each one grows longer and faster.';
+  elements.roundPips.forEach(pip => pip.classList.remove('complete', 'current'));
+  elements.inputTracker.innerHTML = '';
+  setClueText(0);
 }
 
 function initializeIdle() {
   state.started = false;
-  state.stage = 0;
+  state.phase = 'idle';
+  state.roundIndex = -1;
+  state.masterSequence = [];
+  state.currentInput = [];
   state.locked = false;
-  state.socketFilled = false;
-  clearSelectedRune();
-  resetSequenceTracker();
 
-  elements.socketSlot.innerHTML = `
-    <img src="assets/runes/socket-triangle.svg" alt="">
-    <span>Missing Rune</span>
-  `;
-  elements.socketSlot.classList.remove('filled');
-  elements.activationRunes.classList.add('hidden');
-  elements.sequencePanel.classList.add('hidden');
-  elements.runeTokens.forEach(token => token.classList.remove('placed'));
-  elements.tokenRow.classList.remove('hidden');
-  document.body.classList.remove('stage-solved');
+  resetVisualState();
 
   setStatus(
     'Awaiting the trial',
@@ -107,152 +207,179 @@ function initializeIdle() {
   );
 }
 
-function resetToStageOne() {
-  state.started = true;
-  state.stage = 1;
-  state.locked = false;
-  state.socketFilled = false;
-  clearSelectedRune();
-  resetSequenceTracker();
+async function playRoundSequence(roundToken) {
+  const config = ROUND_CONFIG[state.roundIndex];
+  const sequence = getRoundSequence();
 
-  elements.socketSlot.innerHTML = `
-    <img src="assets/runes/socket-triangle.svg" alt="">
-    <span>Missing Rune</span>
-  `;
-  elements.socketSlot.classList.remove('filled');
-  elements.activationRunes.classList.add('hidden');
-  elements.sequencePanel.classList.add('hidden');
-  elements.runeTokens.forEach(token => token.classList.remove('placed'));
-  elements.tokenRow.classList.remove('hidden');
-  document.body.classList.remove('stage-solved');
-
+  elements.memoryCaption.textContent = 'Watch the Marker.';
   setStatus(
-    'Stage I, Restore the Spiral',
-    'Determine which rune completes the pattern, then place it into the broken socket.'
+    `Round ${state.roundIndex + 1}, Observe`,
+    'The runes are moving. Hold the order in memory.'
   );
+
+  await sleep(500);
+
+  for (const rune of sequence) {
+    if (roundToken !== state.runToken) return;
+
+    showRune(rune);
+    safePlay(audio.runePlace);
+    await sleep(config.flash);
+
+    if (roundToken !== state.runToken) return;
+
+    clearDisplay();
+    await sleep(config.gap);
+  }
+
+  if (roundToken !== state.runToken) return;
+
+  state.phase = 'input';
+  state.currentInput = [];
+  createInputTracker(sequence.length);
+  setInputEnabled(true);
+  elements.memoryCaption.textContent = 'Repeat the remembered order.';
+  setStatus(
+    `Round ${state.roundIndex + 1}, Reply`,
+    'Now answer the Marker. Click the runes in the exact order they appeared.'
+  );
+}
+
+function startRound(roundIndex) {
+  state.roundIndex = roundIndex;
+  state.phase = 'showing';
+  state.currentInput = [];
+  state.locked = false;
+
+  updateRoundUI();
+  setInputEnabled(false);
+  createInputTracker(ROUND_CONFIG[roundIndex].length);
+
+  const roundToken = ++state.runToken;
+  playRoundSequence(roundToken);
+}
+
+function resetTrialAndRestart() {
+  state.started = true;
+  state.phase = 'showing';
+  state.roundIndex = -1;
+  state.currentInput = [];
+  state.locked = false;
+  state.masterSequence = buildMasterSequence(ROUND_CONFIG[ROUND_CONFIG.length - 1].length);
+
+  document.body.classList.remove('stage-solved');
+  elements.markerFrame.classList.remove('shake');
+  elements.surgeOverlay.classList.remove('active');
+  clearDisplay();
+  setClueText(0);
+
+  startRound(0);
 }
 
 function startTrial() {
   closeModal(elements.rulesModal);
-  resetToStageOne();
+  resetTrialAndRestart();
 }
 
-function handleSocketPlacement(rune) {
-  if (state.locked || state.stage !== 1) return;
+function handleRoundSuccess() {
+  setInputEnabled(false);
+  state.phase = 'success';
+  safePlay(audio.puzzleSolve);
 
-  const token = elements.runeTokens.find(item => item.dataset.rune === rune);
-  if (!token || token.classList.contains('placed')) return;
+  const finishedRound = state.roundIndex + 1;
+  elements.roundPips[state.roundIndex]?.classList.add('complete');
+  elements.roundPips[state.roundIndex]?.classList.remove('current');
 
-  if (rune === state.missingRune) {
-    state.socketFilled = true;
-    state.locked = true;
-    safePlay(audio.runePlace);
-
-    elements.socketSlot.classList.add('filled');
-    elements.socketSlot.innerHTML = `
-      <img src="${getRuneImagePath(rune)}" alt="${rune} rune">
-    `;
-    token.classList.add('placed');
-    clearSelectedRune();
-
+  if (finishedRound === 1) {
+    setClueText(1);
     setStatus(
-      'Stage I complete',
-      'The missing rune settles into place. The Marker stirs, and its base begins to glow.'
+      'The Marker listens',
+      'The first sequence lands true. The pattern tightens and begins again.'
     );
-
-    window.setTimeout(() => {
-      state.stage = 2;
-      state.locked = false;
-      elements.activationRunes.classList.remove('hidden');
-      elements.sequencePanel.classList.remove('hidden');
-      setStatus(
-        'Stage II, Awaken the Marker',
-        'Press the runes in the order the sea remembers them.'
-      );
-    }, 900);
-  } else {
-    token.classList.add('wrong');
+  } else if (finishedRound === 2) {
+    setClueText(2);
     setStatus(
-      'The spiral resists',
-      'That rune does not complete the repeating tide-memory. Study the rows again.'
+      'The Marker yields a memory-fragment',
+      'The second reply is accepted. A sharper echo suggests the missing piece was taken, not worn away.'
     );
-    window.setTimeout(() => token.classList.remove('wrong'), 450);
   }
-}
 
-function updateTracker() {
-  elements.trackerDots.forEach((dot, index) => {
-    dot.classList.toggle('filled', index < state.sequenceInput.length);
-  });
-}
-
-function handleActivationPress(rune) {
-  if (state.locked || state.stage !== 2) return;
-
-  state.sequenceInput.push(rune);
-  updateTracker();
-
-  const currentIndex = state.sequenceInput.length - 1;
-  const expectedRune = state.sequenceSolution[currentIndex];
-  const button = elements.activationButtons.find(item => item.dataset.rune === rune);
-
-  if (rune === expectedRune) {
-    if (button) {
-      button.classList.add('correct');
-      button.disabled = true;
-    }
-
-    safePlay(audio.runeClick);
-
-    if (state.sequenceInput.length === state.sequenceSolution.length) {
-      solvePuzzle();
-    } else {
-      const nextHint = state.sequenceInput.length === 1
-        ? 'The first remembered rune was true. Continue the ocean order.'
-        : 'The Marker hums more deeply. One rune remains.';
-      setStatus('The Marker listens', nextHint);
-    }
-  } else {
-    if (button) {
-      button.classList.add('wrong');
-    }
-    failActivation();
+  if (finishedRound >= ROUND_CONFIG.length) {
+    solveTrial();
+    return;
   }
+
+  window.setTimeout(() => {
+    startRound(state.roundIndex + 1);
+  }, 1350);
 }
 
-function failActivation() {
+function handleFailure() {
+  state.phase = 'failed';
   state.locked = true;
+  setInputEnabled(false);
   safePlay(audio.puzzleFail);
 
   setStatus(
     'The sea rejects the order',
-    'A violent surge crashes inward. The ritual collapses and the Marker resets.'
+    'A tidal surge crashes inward. Any creature within 15 feet must make a DC 12 Dexterity save or be knocked prone and pushed 10 feet. The Marker resets.'
   );
 
+  elements.memoryCaption.textContent = 'The sequence breaks apart.';
   elements.surgeOverlay.classList.add('active');
   elements.markerFrame.classList.add('shake');
 
   window.setTimeout(() => {
     elements.surgeOverlay.classList.remove('active');
     elements.markerFrame.classList.remove('shake');
-    resetToStageOne();
-  }, 1500);
+    resetTrialAndRestart();
+  }, 1700);
 }
 
-function solvePuzzle() {
-  state.stage = 3;
+function solveTrial() {
+  state.phase = 'solved';
   state.locked = true;
-  safePlay(audio.puzzleSolve);
-
+  setClueText(3);
   setStatus(
     'The Marker remembers',
-    'Water drains from the base of the pillar as a seam opens into the caverns below.'
+    'The final reply resolves. Water drains from the base of the pillar as a seam opens below.'
   );
-
+  elements.memoryCaption.textContent = 'The remembered code is complete.';
   document.body.classList.add('stage-solved');
 
   window.setTimeout(() => safePlay(audio.cavernOpen), 650);
   window.setTimeout(() => openModal(elements.successModal), 1800);
+}
+
+function handleRuneInput(rune, button) {
+  if (state.phase !== 'input' || state.locked) return;
+
+  const sequence = getRoundSequence();
+  const inputIndex = state.currentInput.length;
+  const expectedRune = sequence[inputIndex];
+
+  state.currentInput.push(rune);
+
+  if (rune === expectedRune) {
+    safePlay(audio.runeClick);
+    fillInputSlot(inputIndex, rune, false);
+    button.classList.add('correct');
+    window.setTimeout(() => button.classList.remove('correct'), 220);
+
+    if (state.currentInput.length === sequence.length) {
+      handleRoundSuccess();
+    } else {
+      setStatus(
+        `Round ${state.roundIndex + 1}, Reply`,
+        'Correct so far. Continue the remembered order.'
+      );
+    }
+  } else {
+    fillInputSlot(inputIndex, rune, true);
+    button.classList.add('wrong');
+    window.setTimeout(() => button.classList.remove('wrong'), 320);
+    handleFailure();
+  }
 }
 
 elements.beginButton.addEventListener('click', () => {
@@ -267,72 +394,18 @@ elements.startTrialButton.addEventListener('click', startTrial);
 
 elements.playAgainButton.addEventListener('click', () => {
   closeModal(elements.successModal);
-  resetToStageOne();
+  resetTrialAndRestart();
 });
 
 elements.resetButton.addEventListener('click', () => {
-  closeModal(elements.successModal);
   closeModal(elements.rulesModal);
-  resetToStageOne();
+  closeModal(elements.successModal);
+  resetTrialAndRestart();
 });
 
-elements.runeTokens.forEach(token => {
-  token.addEventListener('click', () => {
-    if (state.stage !== 1 || state.locked || token.classList.contains('placed')) return;
-
-    const isSelected = token.classList.contains('selected');
-    clearSelectedRune();
-
-    if (!isSelected) {
-      token.classList.add('selected');
-      state.selectedRune = token.dataset.rune;
-    }
-  });
-
-  token.addEventListener('dragstart', event => {
-    if (state.stage !== 1 || state.locked || token.classList.contains('placed')) {
-      event.preventDefault();
-      return;
-    }
-
-    token.classList.add('selected');
-    state.selectedRune = token.dataset.rune;
-    event.dataTransfer.setData('text/plain', token.dataset.rune);
-  });
-
-  token.addEventListener('dragend', () => {
-    token.classList.remove('selected');
-  });
-});
-
-elements.socketSlot.addEventListener('click', () => {
-  if (state.stage !== 1 || state.locked || !state.selectedRune) return;
-  handleSocketPlacement(state.selectedRune);
-});
-
-elements.socketSlot.addEventListener('dragover', event => {
-  if (state.stage !== 1 || state.locked) return;
-  event.preventDefault();
-  elements.socketSlot.classList.add('active-drop');
-});
-
-elements.socketSlot.addEventListener('dragleave', () => {
-  elements.socketSlot.classList.remove('active-drop');
-});
-
-elements.socketSlot.addEventListener('drop', event => {
-  event.preventDefault();
-  elements.socketSlot.classList.remove('active-drop');
-
-  if (state.stage !== 1 || state.locked) return;
-
-  const rune = event.dataTransfer.getData('text/plain');
-  handleSocketPlacement(rune);
-});
-
-elements.activationButtons.forEach(button => {
+elements.inputButtons.forEach(button => {
   button.addEventListener('click', () => {
-    handleActivationPress(button.dataset.rune);
+    handleRuneInput(button.dataset.rune, button);
   });
 });
 
