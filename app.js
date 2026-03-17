@@ -117,10 +117,7 @@ function setInputEnabled(enabled) {
 }
 
 function clearDisplay() {
-  elements.sequenceDisplay.classList.remove('showing', 'awaiting-input');
-  elements.displayRuneImage.classList.add('hidden');
-  elements.sequencePlaceholder.classList.remove('hidden');
-}
+
 
 function showRune(rune) {
   elements.displayRuneImage.src = getRuneImagePath(rune);
@@ -313,7 +310,7 @@ async function playRoundSequence(roundToken) {
   const config = ROUND_CONFIG[state.roundIndex];
   const sequence = getRoundSequence();
 
-  clearDisplay();
+    clearDisplay(true);
   hideRoundSuccessOverlay();
   elements.sequenceDisplay.classList.remove('awaiting-input');
 
@@ -334,15 +331,15 @@ async function playRoundSequence(roundToken) {
     safePlay(audio.runePlace);
     await sleep(config.flash);
 
-    if (roundToken !== state.runToken) return;
+        if (roundToken !== state.runToken) return;
 
-    clearDisplay();
+    clearDisplayForSequenceGap();
     await sleep(config.gap);
   }
 
-  if (roundToken !== state.runToken) return;
+      if (roundToken !== state.runToken) return;
 
-  clearDisplay();
+  clearDisplayForSequenceGap();
   elements.sequenceDisplay.classList.add('awaiting-input');
   showPhasePrompt('REPEAT THE ORDER', 950);
 
