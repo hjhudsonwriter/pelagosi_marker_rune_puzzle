@@ -1,4 +1,4 @@
-const RUNES = ['anchor', 'tide', 'depth'];
+const RUNES = ['anchor', 'tide', 'depth', 'life', 'remains'];
 const ROUND_CONFIG = [
   { length: 3, flash: 950, gap: 260 },
   { length: 4, flash: 700, gap: 220 },
@@ -182,7 +182,7 @@ function updateRoundUI() {
   const config = ROUND_CONFIG[state.roundIndex] || { length: 0 };
 
   elements.roundLabel.textContent = `Round ${visibleRound} of ${ROUND_CONFIG.length}`;
-  elements.roundDescription.textContent = `Round ${visibleRound} remembers ${config.length} runes before the sequence fades.`;
+  elements.roundDescription.textContent = `Round ${visibleRound} remembers ${config.length} runes before the sequence fades. Five rune choices are available below.`;
 
   elements.roundPips.forEach((pip, index) => {
     pip.classList.toggle('complete', index < state.roundIndex);
@@ -287,7 +287,7 @@ function resetVisualState() {
 
   elements.memoryCaption.textContent = 'The Marker is still.';
   elements.roundLabel.textContent = `Round 0 of ${ROUND_CONFIG.length}`;
-  elements.roundDescription.textContent = 'Three remembered sequences. Each one grows longer and faster.';
+  elements.roundDescription.textContent = 'Three remembered sequences. Each one grows longer and faster, with five possible runes to choose from.';
   elements.roundPips.forEach(pip => pip.classList.remove('complete', 'current'));
   elements.inputTracker.innerHTML = '';
   setClueText(0);
