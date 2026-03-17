@@ -39,10 +39,12 @@
         <div class="panel">
           <h2>Rune Meanings</h2>
           <ul class="legend">
-            <li><span class="legend-mark">⚓</span> Anchor, that which holds</li>
-            <li><span class="legend-mark">☾</span> Tide, that which moves</li>
-            <li><span class="legend-mark">≈</span> Depth, that which waits below</li>
-          </ul>
+  <li><span class="legend-mark">⚓</span> Anchor, that which holds</li>
+  <li><span class="legend-mark">☾</span> Tide, that which moves</li>
+  <li><span class="legend-mark">≈</span> Depth, that which waits below</li>
+  <li><span class="legend-mark">✦</span> Life, that which quickens</li>
+  <li><span class="legend-mark">⟡</span> Remains, that which endures</li>
+</ul>
         </div>
 
         <div class="panel">
@@ -81,19 +83,27 @@
           <div class="phase-prompt hidden" id="phasePrompt" aria-live="polite"></div>
 
           <div class="input-runes" id="inputRunes" aria-label="Rune input controls">
-            <button class="memory-rune-button" data-rune="anchor" aria-label="Anchor rune" type="button" disabled>
-              <img src="assets/runes/rune_anchor.png" alt="">
-              <span>Anchor</span>
-            </button>
-            <button class="memory-rune-button" data-rune="tide" aria-label="Tide rune" type="button" disabled>
-              <img src="assets/runes/rune_tide.png" alt="">
-              <span>Tide</span>
-            </button>
-            <button class="memory-rune-button" data-rune="depth" aria-label="Depth rune" type="button" disabled>
-              <img src="assets/runes/rune_depth.png" alt="">
-              <span>Depth</span>
-            </button>
-                    </div>
+  <button class="memory-rune-button" data-rune="anchor" aria-label="Anchor rune" type="button" disabled>
+    <img src="assets/runes/rune_anchor.png" alt="">
+    <span>Anchor</span>
+  </button>
+  <button class="memory-rune-button" data-rune="tide" aria-label="Tide rune" type="button" disabled>
+    <img src="assets/runes/rune_tide.png" alt="">
+    <span>Tide</span>
+  </button>
+  <button class="memory-rune-button" data-rune="depth" aria-label="Depth rune" type="button" disabled>
+    <img src="assets/runes/rune_depth.png" alt="">
+    <span>Depth</span>
+  </button>
+  <button class="memory-rune-button" data-rune="life" aria-label="Life rune" type="button" disabled>
+    <img src="assets/runes/rune_life.png" alt="">
+    <span>Life</span>
+  </button>
+  <button class="memory-rune-button" data-rune="remains" aria-label="Remains rune" type="button" disabled>
+    <img src="assets/runes/rune_remains.png" alt="">
+    <span>Remains</span>
+  </button>
+</div>
 
           <div class="round-success-overlay hidden" id="roundSuccessOverlay" aria-hidden="true">
             <div class="round-success-wave"></div>
@@ -137,7 +147,7 @@
             <span>Round II, 4 runes</span>
             <span>Round III, 5 runes</span>
           </div>
-          <p class="small-copy">The sequence is shown first. Once it fades, repeat it exactly.</p>
+          <p class="small-copy">The sequence is shown first. Once it fades, repeat it exactly from five possible rune choices.</p>
         </div>
 
         <div class="panel">
@@ -164,7 +174,7 @@
       <h2 id="rulesTitle">How the trial works</h2>
       <ol class="rules-list">
         <li>The Marker will show a short sequence of runes, one after another.</li>
-        <li>When the display ends, repeat that exact sequence using the three rune buttons below.</li>
+        <li>When the display ends, repeat that exact sequence using the five rune buttons below.</li>
         <li>There are three rounds. Each round is longer, and the runes appear for less time.</li>
         <li>A wrong reply triggers a sea-surge and resets the trial back to the first round.</li>
       </ol>
