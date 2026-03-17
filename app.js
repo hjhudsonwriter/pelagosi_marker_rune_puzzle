@@ -116,7 +116,20 @@ function setInputEnabled(enabled) {
   });
 }
 
-function clearDisplay() {
+function clearDisplay(showPlaceholder = true) {
+  elements.sequenceDisplay.classList.remove('showing', 'awaiting-input');
+  elements.displayRuneImage.classList.add('hidden');
+
+  if (showPlaceholder) {
+    elements.sequencePlaceholder.classList.remove('hidden');
+  } else {
+    elements.sequencePlaceholder.classList.add('hidden');
+  }
+}
+
+function clearDisplayForSequenceGap() {
+  clearDisplay(false);
+}
 
 
 function showRune(rune) {
@@ -310,7 +323,7 @@ async function playRoundSequence(roundToken) {
   const config = ROUND_CONFIG[state.roundIndex];
   const sequence = getRoundSequence();
 
-    clearDisplay(true);
+  clearDisplay(true);
   hideRoundSuccessOverlay();
   elements.sequenceDisplay.classList.remove('awaiting-input');
 
@@ -331,13 +344,13 @@ async function playRoundSequence(roundToken) {
     safePlay(audio.runePlace);
     await sleep(config.flash);
 
-        if (roundToken !== state.runToken) return;
+    if (roundToken !== state.runToken) return;
 
     clearDisplayForSequenceGap();
     await sleep(config.gap);
   }
 
-      if (roundToken !== state.runToken) return;
+  if (roundToken !== state.runToken) return;
 
   clearDisplayForSequenceGap();
   elements.sequenceDisplay.classList.add('awaiting-input');
