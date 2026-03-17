@@ -65,7 +65,7 @@
           <div class="water-drain"></div>
           <div class="cavern-seam" aria-hidden="true"></div>
 
-          <div class="memory-chamber" id="memoryChamber" aria-label="Memory sequence display">
+                    <div class="memory-chamber" id="memoryChamber" aria-label="Memory sequence display">
             <p class="memory-caption" id="memoryCaption">The Marker is still.</p>
 
             <div class="sequence-display" id="sequenceDisplay">
@@ -77,6 +77,8 @@
               </div>
             </div>
           </div>
+
+          <div class="phase-prompt hidden" id="phasePrompt" aria-live="polite"></div>
 
           <div class="input-runes" id="inputRunes" aria-label="Rune input controls">
             <button class="memory-rune-button" data-rune="anchor" aria-label="Anchor rune" type="button" disabled>
@@ -91,6 +93,12 @@
               <img src="assets/runes/rune_depth.png" alt="">
               <span>Depth</span>
             </button>
+                    </div>
+
+          <div class="round-success-overlay hidden" id="roundSuccessOverlay" aria-hidden="true">
+            <div class="round-success-wave"></div>
+            <p class="round-success-title" id="roundSuccessTitle">ROUND COMPLETE</p>
+            <p class="round-success-text" id="roundSuccessText">THE MARKER STIRS</p>
           </div>
 
           <div class="surge-overlay" id="surgeOverlay" aria-hidden="true">
