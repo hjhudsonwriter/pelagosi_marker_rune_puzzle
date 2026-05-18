@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pelagosi Marker Memory Trial</title>
-  <meta name="description" content="A standalone Pelagosi rune memory trial for GitHub Pages." />
+  <title>Pelagosi Puzzle Trials</title>
+  <meta name="description" content="Standalone Pelagosi rune puzzle trials for GitHub Pages." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Uncial+Antiqua&display=swap" rel="stylesheet">
@@ -17,9 +17,17 @@
     <div class="ambient ambient-c"></div>
 
     <header class="hero">
-      <p class="eyebrow">Pelagosi Memory Trial</p>
-      <h1>The Marker Remembers</h1>
-      <p class="hero-copy">
+      <div class="topbar panel">
+        <label class="selector-label" for="puzzleSelect">Choose Puzzle</label>
+        <select id="puzzleSelect" class="puzzle-select" aria-label="Choose which Pelagosi puzzle to play">
+          <option value="memory">The Marker Remembers</option>
+          <option value="tidal">The Tidal Sequence</option>
+        </select>
+      </div>
+
+      <p class="eyebrow" id="modeEyebrow">Pelagosi Memory Trial</p>
+      <h1 id="modeTitle">The Marker Remembers</h1>
+      <p class="hero-copy" id="modeCopy">
         The runes do not sit still. Watch the sequence, hold it in memory, then answer the Marker in kind.
       </p>
       <button id="beginButton" class="primary-button" type="button">BEGIN</button>
@@ -28,8 +36,8 @@
     <main class="game-shell" id="gameShell" aria-live="polite">
       <section class="game-column left-panel">
         <div class="panel">
-          <h2>Inscription</h2>
-          <p class="inscription">
+          <h2 id="inscriptionTitle">Inscription</h2>
+          <p class="inscription" id="inscriptionText">
             “What the sea takes, it names first.<br>
             What is named, it carries.<br>
             What is carried, it returns.”
@@ -38,13 +46,7 @@
 
         <div class="panel">
           <h2>Rune Meanings</h2>
-          <ul class="legend">
-  <li><span class="legend-mark">⚓</span> Anchor, that which holds</li>
-  <li><span class="legend-mark">☾</span> Tide, that which moves</li>
-  <li><span class="legend-mark">≈</span> Depth, that which waits below</li>
-  <li><span class="legend-mark">✦</span> Life, that which quickens</li>
-  <li><span class="legend-mark">⟡</span> Remains, that which endures</li>
-</ul>
+          <ul class="legend" id="legendList"></ul>
         </div>
 
         <div class="panel">
@@ -55,103 +57,188 @@
       </section>
 
       <section class="marker-stage">
-        <div class="marker-frame" id="markerFrame">
-          <img
-            src="assets/images/marker-main.png"
-            alt="Pelagosi marker"
-            class="marker-image"
-            id="markerImage"
-          >
+        <!-- PUZZLE 1: ORIGINAL MEMORY TRIAL -->
+        <div class="puzzle-stage active" id="memoryPuzzleStage" data-puzzle-stage="memory">
+          <div class="marker-frame memory-marker-frame" id="markerFrame">
+            <img
+              src="assets/images/marker-main.png"
+              alt="Pelagosi marker"
+              class="marker-image"
+              id="markerImage"
+            >
 
-          <div class="water-ring"></div>
-          <div class="water-drain"></div>
-          <div class="cavern-seam" aria-hidden="true"></div>
+            <div class="water-ring"></div>
+            <div class="water-drain"></div>
+            <div class="cavern-seam" aria-hidden="true"></div>
 
-                    <div class="memory-chamber" id="memoryChamber" aria-label="Memory sequence display">
-            <p class="memory-caption" id="memoryCaption">The Marker is still.</p>
+            <div class="memory-chamber" id="memoryChamber" aria-label="Memory sequence display">
+              <p class="memory-caption" id="memoryCaption">The Marker is still.</p>
 
-            <div class="sequence-display" id="sequenceDisplay">
-              <div class="sequence-halo"></div>
-              <img id="displayRuneImage" class="display-rune-image hidden" src="assets/runes/rune_anchor.png" alt="Displayed rune">
-              <div class="sequence-placeholder" id="sequencePlaceholder">
-                <span class="placeholder-glyph">◈</span>
-                <span class="placeholder-text">Watch the runes when the trial begins.</span>
+              <div class="sequence-display" id="sequenceDisplay">
+                <div class="sequence-halo"></div>
+                <img id="displayRuneImage" class="display-rune-image hidden" src="assets/runes/rune_anchor.png" alt="Displayed rune">
+                <div class="sequence-placeholder" id="sequencePlaceholder">
+                  <span class="placeholder-glyph">◈</span>
+                  <span class="placeholder-text">Watch the runes when the trial begins.</span>
+                </div>
               </div>
+            </div>
+
+            <div class="phase-prompt hidden" id="phasePrompt" aria-live="polite"></div>
+
+            <div class="input-runes" id="inputRunes" aria-label="Rune input controls">
+              <button class="memory-rune-button" data-rune="anchor" aria-label="Anchor rune" type="button" disabled>
+                <img src="assets/runes/rune_anchor.png" alt="">
+                <span>Anchor</span>
+              </button>
+              <button class="memory-rune-button" data-rune="tide" aria-label="Tide rune" type="button" disabled>
+                <img src="assets/runes/rune_tide.png" alt="">
+                <span>Tide</span>
+              </button>
+              <button class="memory-rune-button" data-rune="depth" aria-label="Depth rune" type="button" disabled>
+                <img src="assets/runes/rune_depth.png" alt="">
+                <span>Depth</span>
+              </button>
+              <button class="memory-rune-button" data-rune="life" aria-label="Life rune" type="button" disabled>
+                <img src="assets/runes/rune_life.png" alt="">
+                <span>Life</span>
+              </button>
+              <button class="memory-rune-button" data-rune="remains" aria-label="Remains rune" type="button" disabled>
+                <img src="assets/runes/rune_remains.png" alt="">
+                <span>Remains</span>
+              </button>
+            </div>
+
+            <div class="round-success-overlay hidden" id="roundSuccessOverlay" aria-hidden="true">
+              <div class="round-success-wave"></div>
+              <p class="round-success-title" id="roundSuccessTitle">ROUND COMPLETE</p>
+              <p class="round-success-text" id="roundSuccessText">THE MARKER STIRS</p>
+            </div>
+
+            <div class="surge-overlay" id="surgeOverlay" aria-hidden="true">
+              <div class="surge-wave"></div>
+              <p>THE SEA REJECTS THE ORDER</p>
             </div>
           </div>
 
-          <div class="phase-prompt hidden" id="phasePrompt" aria-live="polite"></div>
+          <div class="trial-console panel">
+            <div class="console-row">
+              <div>
+                <h2>Trial Progress</h2>
+                <p id="roundDescription" class="small-copy">Three remembered sequences. Each one grows longer and faster.</p>
+              </div>
+              <div class="round-label" id="roundLabel">Round 0 of 3</div>
+            </div>
 
-          <div class="input-runes" id="inputRunes" aria-label="Rune input controls">
-  <button class="memory-rune-button" data-rune="anchor" aria-label="Anchor rune" type="button" disabled>
-    <img src="assets/runes/rune_anchor.png" alt="">
-    <span>Anchor</span>
-  </button>
-  <button class="memory-rune-button" data-rune="tide" aria-label="Tide rune" type="button" disabled>
-    <img src="assets/runes/rune_tide.png" alt="">
-    <span>Tide</span>
-  </button>
-  <button class="memory-rune-button" data-rune="depth" aria-label="Depth rune" type="button" disabled>
-    <img src="assets/runes/rune_depth.png" alt="">
-    <span>Depth</span>
-  </button>
-  <button class="memory-rune-button" data-rune="life" aria-label="Life rune" type="button" disabled>
-    <img src="assets/runes/rune_life.png" alt="">
-    <span>Life</span>
-  </button>
-  <button class="memory-rune-button" data-rune="remains" aria-label="Remains rune" type="button" disabled>
-    <img src="assets/runes/rune_remains.png" alt="">
-    <span>Remains</span>
-  </button>
-</div>
+            <div class="round-progress" id="roundProgress" aria-label="Round progress">
+              <span class="round-pip"></span>
+              <span class="round-pip"></span>
+              <span class="round-pip"></span>
+            </div>
 
-          <div class="round-success-overlay hidden" id="roundSuccessOverlay" aria-hidden="true">
-            <div class="round-success-wave"></div>
-            <p class="round-success-title" id="roundSuccessTitle">ROUND COMPLETE</p>
-            <p class="round-success-text" id="roundSuccessText">THE MARKER STIRS</p>
-          </div>
-
-          <div class="surge-overlay" id="surgeOverlay" aria-hidden="true">
-            <div class="surge-wave"></div>
-            <p>THE SEA REJECTS THE ORDER</p>
+            <div class="input-tracker-wrap">
+              <p class="tracker-title">Current Reply</p>
+              <div class="input-tracker" id="inputTracker" aria-label="Current input progress"></div>
+            </div>
           </div>
         </div>
 
-        <div class="trial-console panel">
-          <div class="console-row">
-            <div>
-              <h2>Trial Progress</h2>
-              <p id="roundDescription" class="small-copy">Three remembered sequences. Each one grows longer and faster.</p>
+        <!-- PUZZLE 2: NEW TIDAL SEQUENCE -->
+        <div class="puzzle-stage" id="tidalPuzzleStage" data-puzzle-stage="tidal">
+          <div class="tidal-frame" id="tidalFrame" aria-label="Tidal Sequence puzzle board">
+            <img
+              src="assets/images/tidal-sequence.png"
+              alt="Ancient flooded Pelagosi chamber with four pillars surrounding a central basin"
+              class="tidal-image"
+              id="tidalImage"
+            >
+
+            <div class="basin-aura" id="basinAura" aria-hidden="true"></div>
+            <div class="flow-line line-top" aria-hidden="true"></div>
+            <div class="flow-line line-right" aria-hidden="true"></div>
+            <div class="flow-line line-bottom" aria-hidden="true"></div>
+            <div class="flow-line line-left" aria-hidden="true"></div>
+
+            <div class="tidal-pillar" data-pillar="topLeft" style="--x: 40%; --y: 52%;">
+              <button class="tidal-rune-button" data-action="rune" data-pillar="topLeft" type="button" aria-label="Change top-left pillar rune">
+                <img src="assets/runes/rune_flow.png" alt="">
+                <span>Flow</span>
+              </button>
+              <button class="tidal-arrow-button" data-action="direction" data-pillar="topLeft" type="button" aria-label="Rotate top-left pillar direction">↑</button>
             </div>
-            <div class="round-label" id="roundLabel">Round 0 of 3</div>
+
+            <div class="tidal-pillar" data-pillar="topRight" style="--x: 60%; --y: 52%;">
+              <button class="tidal-rune-button" data-action="rune" data-pillar="topRight" type="button" aria-label="Change top-right pillar rune">
+                <img src="assets/runes/rune_anchor.png" alt="">
+                <span>Anchor</span>
+              </button>
+              <button class="tidal-arrow-button" data-action="direction" data-pillar="topRight" type="button" aria-label="Rotate top-right pillar direction">←</button>
+            </div>
+
+            <div class="tidal-pillar" data-pillar="bottomLeft" style="--x: 40%; --y: 76%;">
+              <button class="tidal-rune-button" data-action="rune" data-pillar="bottomLeft" type="button" aria-label="Change bottom-left pillar rune">
+                <img src="assets/runes/rune_depth.png" alt="">
+                <span>Depth</span>
+              </button>
+              <button class="tidal-arrow-button" data-action="direction" data-pillar="bottomLeft" type="button" aria-label="Rotate bottom-left pillar direction">→</button>
+            </div>
+
+            <div class="tidal-pillar" data-pillar="bottomRight" style="--x: 60%; --y: 76%;">
+              <button class="tidal-rune-button" data-action="rune" data-pillar="bottomRight" type="button" aria-label="Change bottom-right pillar rune">
+                <img src="assets/runes/rune_echo.png" alt="">
+                <span>Echo</span>
+              </button>
+              <button class="tidal-arrow-button" data-action="direction" data-pillar="bottomRight" type="button" aria-label="Rotate bottom-right pillar direction">↓</button>
+            </div>
+
+            <div class="tidal-event-overlay hidden" id="tidalEventOverlay" aria-live="polite">
+              <div class="round-success-wave"></div>
+              <p id="tidalEventTitle">THE WATER ANSWERS</p>
+              <span id="tidalEventText">The basin listens.</span>
+            </div>
           </div>
 
-          <div class="round-progress" id="roundProgress" aria-label="Round progress">
-            <span class="round-pip"></span>
-            <span class="round-pip"></span>
-            <span class="round-pip"></span>
-          </div>
+          <div class="trial-console panel tidal-console">
+            <div class="console-row">
+              <div>
+                <h2>Sequence Console</h2>
+                <p id="tidalDescription" class="small-copy">Rotate each pillar rune and arrow. Create a closed clockwise current around the basin.</p>
+              </div>
+              <div class="round-label" id="tidalAttemptLabel">Attempts: 0</div>
+            </div>
 
-          <div class="input-tracker-wrap">
-            <p class="tracker-title">Current Reply</p>
-            <div class="input-tracker" id="inputTracker" aria-label="Current input progress"></div>
+            <div class="tidal-progress" id="tidalProgress" aria-label="Pillar alignment progress">
+              <span class="tidal-pip" data-pillar="topLeft">TL</span>
+              <span class="tidal-pip" data-pillar="topRight">TR</span>
+              <span class="tidal-pip" data-pillar="bottomRight">BR</span>
+              <span class="tidal-pip" data-pillar="bottomLeft">BL</span>
+            </div>
+
+            <div class="tidal-actions">
+              <button id="checkTidalButton" class="primary-button" type="button">CHECK ALIGNMENT</button>
+              <button id="randomiseTidalButton" class="secondary-button" type="button">SHUFFLE PILLARS</button>
+            </div>
+
+            <p class="small-copy tidal-helper">
+              Tip: click a rune to cycle its symbol. Click the arrow below it to rotate the flow direction.
+            </p>
           </div>
         </div>
       </section>
 
       <section class="game-column right-panel">
         <div class="panel">
-          <h2>Trial Structure</h2>
-          <div class="cycle-card cycle-card-vertical">
+          <h2 id="structureTitle">Trial Structure</h2>
+          <div class="cycle-card cycle-card-vertical" id="structureList">
             <span>Round I, 3 runes</span>
             <span>Round II, 4 runes</span>
             <span>Round III, 5 runes</span>
           </div>
-          <p class="small-copy">The sequence is shown first. Once it fades, repeat it exactly from five possible rune choices.</p>
+          <p class="small-copy" id="structureCopy">The sequence is shown first. Once it fades, repeat it exactly from five possible rune choices.</p>
         </div>
 
         <div class="panel">
-          <h2>Recovered Impression</h2>
+          <h2 id="clueTitle">Recovered Impression</h2>
           <p class="small-copy" id="clueText">
             The Marker is cycling through something deliberate. It feels less like language than recall.
           </p>
@@ -159,15 +246,16 @@
 
         <div class="panel">
           <h2>Trial Notes</h2>
-          <p class="small-copy">
+          <p class="small-copy" id="trialNotes">
             A failed reply unleashes a tidal surge. Any creature within 15 feet must make a DC 12 Dexterity save or be knocked prone and pushed 10 feet.
           </p>
-          <button id="resetButton" class="secondary-button" type="button">RESET TRIAL</button>
+          <button id="resetButton" class="secondary-button" type="button">RESET CURRENT PUZZLE</button>
         </div>
       </section>
     </main>
   </div>
 
+  <!-- MEMORY RULES -->
   <div class="modal-backdrop hidden" id="rulesModal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
     <div class="modal">
       <p class="eyebrow">Ritual Instructions</p>
@@ -178,9 +266,7 @@
         <li>There are three rounds. Each round is longer, and the runes appear for less time.</li>
         <li>A wrong reply triggers a sea-surge and resets the trial back to the first round.</li>
       </ol>
-      <p class="small-copy">
-        Watch carefully. Remember the order. Answer the Marker exactly.
-      </p>
+      <p class="small-copy">Watch carefully. Remember the order. Answer the Marker exactly.</p>
       <div class="modal-actions">
         <button id="closeRulesButton" class="secondary-button" type="button">Not Yet</button>
         <button id="startTrialButton" class="primary-button" type="button">START TRIAL</button>
@@ -188,24 +274,65 @@
     </div>
   </div>
 
-  <div class="modal-backdrop hidden" id="successModal" role="dialog" aria-modal="true" aria-labelledby="successTitle">
-  <div class="modal success-modal">
-    <p class="eyebrow">Marker Response</p>
-    <h2 id="successTitle">The Marker Sinks</h2>
-    <p>
-      The restored keystone settles into place. Pale blue runes flare once across the stone, then the Marker sinks slowly beneath the sea as the tide stabilises around it.
-    </p>
-    <p>
-      It was never broken. The piece was removed deliberately. On the inner face of the keystone, an etched sunburst marks Aurushi involvement.
-    </p>
-    <p>
-      The sea closes slowly over the stone. The runes dim. For a moment the water is perfectly still. Then far below… something shifts.
-    </p>
-    <div class="modal-actions">
-      <button id="playAgainButton" class="primary-button" type="button">RUN THE TRIAL AGAIN</button>
+  <!-- TIDAL RULES -->
+  <div class="modal-backdrop hidden" id="tidalRulesModal" role="dialog" aria-modal="true" aria-labelledby="tidalRulesTitle">
+    <div class="modal">
+      <p class="eyebrow">Sequence Instructions</p>
+      <h2 id="tidalRulesTitle">How the Tidal Sequence works</h2>
+      <ol class="rules-list">
+        <li>Each pillar has a rune and a flow direction.</li>
+        <li>Click a rune to cycle its symbol. Click the arrow beneath it to rotate its direction.</li>
+        <li>The four arrows must form one closed clockwise current around the basin.</li>
+        <li>The runes must follow the old order: Flow → Echo → Depth → Stone.</li>
+        <li>Use CHECK ALIGNMENT to test the current arrangement. The chamber gives feedback after each attempt.</li>
+      </ol>
+      <p class="small-copy">Let each stone speak to the next. Let no current end.</p>
+      <div class="modal-actions">
+        <button id="closeTidalRulesButton" class="secondary-button" type="button">Not Yet</button>
+        <button id="startTidalButton" class="primary-button" type="button">START SEQUENCE</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- MEMORY SUCCESS -->
+  <div class="modal-backdrop hidden" id="successModal" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+    <div class="modal success-modal">
+      <p class="eyebrow">Marker Response</p>
+      <h2 id="successTitle">The Marker Sinks</h2>
+      <p>
+        The restored keystone settles into place. Pale blue runes flare once across the stone, then the Marker sinks slowly beneath the sea as the tide stabilises around it.
+      </p>
+      <p>
+        It was never broken. The piece was removed deliberately. On the inner face of the keystone, an etched sunburst marks Aurushi involvement.
+      </p>
+      <p>
+        The sea closes slowly over the stone. The runes dim. For a moment the water is perfectly still. Then far below… something shifts.
+      </p>
+      <div class="modal-actions">
+        <button id="playAgainButton" class="primary-button" type="button">RUN THE TRIAL AGAIN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIDAL SUCCESS -->
+  <div class="modal-backdrop hidden" id="tidalSuccessModal" role="dialog" aria-modal="true" aria-labelledby="tidalSuccessTitle">
+    <div class="modal success-modal">
+      <p class="eyebrow">Sequence Response</p>
+      <h2 id="tidalSuccessTitle">The Chamber Opens</h2>
+      <p>
+        One by one, the pillars cease their grinding. Water pours upward instead of down, gathering above the basin in a perfect suspended ring.
+      </p>
+      <p>
+        The current completes itself. The central basin fills without source, then drains in a single spiralling breath.
+      </p>
+      <p>
+        Somewhere behind the northern arch, ancient stone unlocks. Whatever Maerys came here to witness lies beyond.
+      </p>
+      <div class="modal-actions">
+        <button id="playTidalAgainButton" class="primary-button" type="button">RESET SEQUENCE</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
