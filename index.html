@@ -154,10 +154,19 @@
             >
 
             <div class="basin-aura" id="basinAura" aria-hidden="true"></div>
+            <div class="tidal-water-pressure" aria-hidden="true"></div>
             <div class="flow-line line-top" aria-hidden="true"></div>
             <div class="flow-line line-right" aria-hidden="true"></div>
             <div class="flow-line line-bottom" aria-hidden="true"></div>
             <div class="flow-line line-left" aria-hidden="true"></div>
+
+            <div class="basin-selector hidden" id="basinSelector" aria-label="Central basin rune selector">
+              <p>Central Basin</p>
+              <button class="basin-rune-button" id="basinRuneButton" type="button" aria-label="Change central basin rune" disabled>
+                <img src="assets/runes/rune_anchor.png" alt="">
+                <span>Anchor</span>
+              </button>
+            </div>
 
             <div class="tidal-pillar" data-pillar="topLeft" style="--x: 40%; --y: 52%;">
               <button class="tidal-rune-button" data-action="rune" data-pillar="topLeft" type="button" aria-label="Change top-left pillar rune">
@@ -212,6 +221,20 @@
               <span class="tidal-pip" data-pillar="topRight">TR</span>
               <span class="tidal-pip" data-pillar="bottomRight">BR</span>
               <span class="tidal-pip" data-pillar="bottomLeft">BL</span>
+            </div>
+
+            <div class="pressure-panel" aria-label="Chamber pressure meter">
+              <div class="pressure-heading">
+                <span>Chamber Pressure</span>
+                <strong id="pressureLabel">Calm</strong>
+              </div>
+              <div class="pressure-track" id="pressureTrack" aria-hidden="true">
+                <span class="pressure-segment" data-level="1"></span>
+                <span class="pressure-segment" data-level="2"></span>
+                <span class="pressure-segment" data-level="3"></span>
+                <span class="pressure-segment" data-level="4"></span>
+              </div>
+              <p class="small-copy pressure-effect" id="pressureEffect">The chamber is listening. No pressure has built beneath the basin.</p>
             </div>
 
             <div class="tidal-actions">
@@ -280,13 +303,14 @@
       <p class="eyebrow">Sequence Instructions</p>
       <h2 id="tidalRulesTitle">How the Tidal Sequence works</h2>
       <ol class="rules-list">
-        <li>Each pillar has a rune and a flow direction.</li>
+        <li>Phase I: each outer pillar has a rune and a flow direction.</li>
         <li>Click a rune to cycle its symbol. Click the arrow beneath it to rotate its direction.</li>
         <li>The four arrows must form one closed clockwise current around the basin.</li>
-        <li>The runes must follow the old order: Flow → Echo → Depth → Stone.</li>
-        <li>Use CHECK ALIGNMENT to test the current arrangement. The chamber gives feedback after each attempt.</li>
+        <li>The outer runes must follow the old order: Flow → Echo → Depth → Stone.</li>
+        <li>When the outer current is correct, the central basin wakes. Choose the final principle that completes the sequence.</li>
+        <li>Wrong checks increase Chamber Pressure. At maximum pressure, the chamber surges and resets the sequence.</li>
       </ol>
-      <p class="small-copy">Let each stone speak to the next. Let no current end.</p>
+      <p class="small-copy">Let each stone speak to the next. Let no current end. Stone returns the Current.</p>
       <div class="modal-actions">
         <button id="closeTidalRulesButton" class="secondary-button" type="button">Not Yet</button>
         <button id="startTidalButton" class="primary-button" type="button">START SEQUENCE</button>
@@ -323,7 +347,7 @@
         One by one, the pillars cease their grinding. Water pours upward instead of down, gathering above the basin in a perfect suspended ring.
       </p>
       <p>
-        The current completes itself. The central basin fills without source, then drains in a single spiralling breath.
+        The current completes itself. The central basin accepts the Current, fills without source, then drains in a single spiralling breath.
       </p>
       <p>
         Somewhere behind the northern arch, ancient stone unlocks. Whatever Maerys came here to witness lies beyond.
