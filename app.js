@@ -59,10 +59,10 @@ const MODE_COPY = {
       ['⚓', 'Anchor, restraint and stability']
     ],
     structureTitle: 'Sequence Rules',
-    structureItems: ['Top-left flows right', 'Top-right flows down', 'Bottom-right flows left', 'Bottom-left flows up'],
-    structureCopy: 'The arrows must create a clockwise loop, while the runes read Flow → Echo → Depth → Stone around the basin.',
+    structureItems: ['Phase I, close the outer current', 'Phase II, wake the central basin', 'Pressure IV, the chamber surges'],
+    structureCopy: 'First align the four pillars into Flow → Echo → Depth → Stone. Then name the central basin with the missing final principle.',
     clueTitle: 'Chamber Response',
-    notes: 'Wrong alignments disturb the water but do not instantly reset the chamber. Each failed check makes the pressure stranger.'
+    notes: 'Wrong checks increase Chamber Pressure. At maximum pressure the chamber surges, resets the Tidal Sequence, and the party faces an in-world consequence.'
   }
 };
 
@@ -89,6 +89,50 @@ const TIDAL_START = {
   bottomRight: { runeIndex: 2, directionIndex: 2 },  // Depth, down
   bottomLeft: { runeIndex: 1, directionIndex: 1 }    // Echo, right
 };
+
+const TIDAL_BASIN_SOLUTION = 'current';
+const TIDAL_BASIN_START_INDEX = 5; // Anchor, a tempting wrong answer.
+const TIDAL_MAX_PRESSURE = 4;
+
+const TIDAL_PRESSURE_STATES = [
+  {
+    label: 'Calm',
+    effect: 'The chamber is listening. No pressure has built beneath the basin.',
+    sound: null
+  },
+  {
+    label: 'Stirring',
+    title: 'THE BASIN RIPPLES',
+    text: 'Water gathers between the floor stones. The sequence is not rejected outright, but the current fails to close.',
+    status: 'The basin ripples. The room has heard you, but the current is incomplete.',
+    effect: 'In-world: the basin bubbles and the chamber grows cold. No damage yet.',
+    sound: 'waterStir'
+  },
+  {
+    label: 'Rising',
+    title: 'THE WATER RISES',
+    text: 'A shallow sheet of water spreads across the chamber floor. The pillars grind as if turning somewhere below the stone.',
+    status: 'Water rises over the floor. The sequence remains active, but the chamber is now resisting you.',
+    effect: 'In-world: ankle-deep water spreads. Treat slick areas as difficult terrain if useful.',
+    sound: 'pressureRise'
+  },
+  {
+    label: 'Reversing',
+    title: 'THE CURRENT REVERSES',
+    text: 'The suspended streams overhead flow backward. Pressure tightens around the basin like a fist.',
+    status: 'The overhead water reverses for a heartbeat. Another failure will trigger a full surge.',
+    effect: 'In-world: DC 13 STR save near the basin or be pulled 10 feet toward it.',
+    sound: 'currentReverse'
+  },
+  {
+    label: 'Surge',
+    title: 'THE CHAMBER SURGES',
+    text: 'The basin spits the current back through every channel at once. The pillars slam back into disorder.',
+    status: 'The chamber rejects the sequence. The pressure vents violently and the puzzle resets.',
+    effect: 'In-world: DC 14 DEX save or take 2d6 bludgeoning damage and fall prone. The sequence resets.',
+    sound: 'tidalSurge'
+  }
+];
 
 const TIDAL_ATTEMPT_COPY = [
   {
@@ -127,9 +171,13 @@ const tidalState = {
   started: false,
   solved: false,
   locked: true,
+  phase: 'idle', // idle, outer, basin, solved
   attempts: 0,
+  pressure: 0,
   feedbackActive: false,
+  feedbackMode: 'none', // none, complete, partial
   runToken: 0,
+  basinRuneIndex: TIDAL_BASIN_START_INDEX,
   pillars: structuredCloneSafe(TIDAL_START)
 };
 
@@ -195,7 +243,12 @@ const elements = {
   tidalPillars: Array.from(document.querySelectorAll('.tidal-pillar')),
   tidalRuneButtons: Array.from(document.querySelectorAll('.tidal-rune-button')),
   tidalArrowButtons: Array.from(document.querySelectorAll('.tidal-arrow-button')),
-  tidalPips: Array.from(document.querySelectorAll('.tidal-pip'))
+  tidalPips: Array.from(document.querySelectorAll('.tidal-pip')),
+  basinSelector: document.getElementById('basinSelector'),
+  basinRuneButton: document.getElementById('basinRuneButton'),
+  pressureLabel: document.getElementById('pressureLabel'),
+  pressureEffect: document.getElementById('pressureEffect'),
+  pressureSegments: Array.from(document.querySelectorAll('.pressure-segment'))
 };
 
 const audio = {
@@ -203,11 +256,19 @@ const audio = {
   runeClick: new Audio('assets/audio/rune-click.wav'),
   puzzleFail: new Audio('assets/audio/puzzle-fail.wav'),
   puzzleSolve: new Audio('assets/audio/puzzle-solve.wav'),
-  cavernOpen: new Audio('assets/audio/cavern-open.wav')
+  cavernOpen: new Audio('assets/audio/cavern-open.wav'),
+
+  // Optional future files. Upload these later to enable richer jeopardy audio.
+  // The game still works if these files are not present yet.
+  waterStir: new Audio('assets/audio/water-stir.wav'),
+  pressureRise: new Audio('assets/audio/pressure-rise.wav'),
+  currentReverse: new Audio('assets/audio/current-reverse.wav'),
+  tidalSurge: new Audio('assets/audio/tidal-surge.wav'),
+  basinWake: new Audio('assets/audio/basin-wake.wav')
 };
 
-Object.values(audio).forEach(sound => {
-  sound.preload = 'auto';
+Object.entries(audio).forEach(([name, sound]) => {
+  sound.preload = ['waterStir', 'pressureRise', 'currentReverse', 'tidalSurge', 'basinWake'].includes(name) ? 'none' : 'auto';
   sound.volume = 0.85;
 });
 
@@ -717,14 +778,82 @@ function handleRuneInput(rune, button) {
    TIDAL SEQUENCE FUNCTIONS
 ------------------------- */
 
+function getTidalPressureState() {
+  return TIDAL_PRESSURE_STATES[tidalState.pressure] || TIDAL_PRESSURE_STATES[0];
+}
+
 function resetTidalFeedback() {
   tidalState.feedbackActive = false;
+  tidalState.feedbackMode = 'none';
   elements.tidalPillars.forEach(pillar => {
     pillar.classList.remove('rune-correct', 'direction-correct', 'pillar-complete');
   });
   elements.tidalPips.forEach(pip => {
     pip.classList.remove('rune-correct', 'direction-correct', 'complete');
   });
+}
+
+function updateTidalPressureUI() {
+  document.body.classList.remove('tidal-pressure-1', 'tidal-pressure-2', 'tidal-pressure-3', 'tidal-pressure-4');
+
+  if (tidalState.pressure > 0) {
+    document.body.classList.add(`tidal-pressure-${tidalState.pressure}`);
+  }
+
+  const pressureState = getTidalPressureState();
+  if (elements.pressureLabel) {
+    elements.pressureLabel.textContent = pressureState.label;
+  }
+  if (elements.pressureEffect) {
+    elements.pressureEffect.textContent = pressureState.effect;
+  }
+
+  elements.pressureSegments.forEach(segment => {
+    const level = Number(segment.dataset.level || 0);
+    segment.classList.toggle('active', level <= tidalState.pressure);
+    segment.classList.toggle('danger', tidalState.pressure >= TIDAL_MAX_PRESSURE && level <= tidalState.pressure);
+  });
+}
+
+function renderTidalControls() {
+  const pillarControlsEnabled = !tidalState.locked && tidalState.phase === 'outer' && !tidalState.solved;
+  const basinControlsEnabled = !tidalState.locked && tidalState.phase === 'basin' && !tidalState.solved;
+
+  elements.tidalRuneButtons.forEach(button => { button.disabled = !pillarControlsEnabled; });
+  elements.tidalArrowButtons.forEach(button => { button.disabled = !pillarControlsEnabled; });
+  elements.randomiseTidalButton.disabled = !pillarControlsEnabled;
+  elements.checkTidalButton.disabled = tidalState.locked || tidalState.solved || tidalState.phase === 'idle';
+
+  if (elements.basinRuneButton) {
+    elements.basinRuneButton.disabled = !basinControlsEnabled;
+  }
+
+  if (elements.basinSelector) {
+    elements.basinSelector.classList.toggle('hidden', tidalState.phase !== 'basin' && !tidalState.solved);
+    elements.basinSelector.classList.toggle('basin-solved', tidalState.solved);
+  }
+
+  if (tidalState.phase === 'basin') {
+    elements.checkTidalButton.textContent = 'ATTUNE BASIN';
+  } else {
+    elements.checkTidalButton.textContent = 'CHECK ALIGNMENT';
+  }
+}
+
+function renderTidalBasin() {
+  if (!elements.basinRuneButton) return;
+
+  const rune = TIDAL_RUNES[tidalState.basinRuneIndex];
+  const image = elements.basinRuneButton.querySelector('img');
+  const label = elements.basinRuneButton.querySelector('span');
+
+  image.src = getRuneImagePath(rune);
+  image.alt = `${rune} rune`;
+  label.textContent = getLabelFromId(rune);
+
+  const correct = rune === TIDAL_BASIN_SOLUTION;
+  elements.basinRuneButton.classList.toggle('basin-rune-correct', (tidalState.feedbackActive && tidalState.phase === 'basin' && correct) || tidalState.solved);
+  elements.basinRuneButton.classList.toggle('basin-rune-wrong', tidalState.feedbackActive && tidalState.phase === 'basin' && !correct);
 }
 
 function renderTidalPillars() {
@@ -745,22 +874,22 @@ function renderTidalPillars() {
     label.textContent = getLabelFromId(rune);
     arrowButton.textContent = TIDAL_DIRECTION_SYMBOLS[direction];
 
-    runeButton.disabled = tidalState.locked;
-    arrowButton.disabled = tidalState.locked;
-
     const runeCorrect = rune === solution.rune;
     const directionCorrect = direction === solution.direction;
     const complete = runeCorrect && directionCorrect;
+    const revealComplete = tidalState.solved || (tidalState.feedbackActive && ['complete', 'partial'].includes(tidalState.feedbackMode));
+    const revealPartial = tidalState.solved || (tidalState.feedbackActive && tidalState.feedbackMode === 'partial');
 
-    if (tidalState.feedbackActive || tidalState.solved) {
-      pillarEl.classList.toggle('rune-correct', runeCorrect);
-      pillarEl.classList.toggle('direction-correct', directionCorrect);
-      pillarEl.classList.toggle('pillar-complete', complete);
-    }
+    pillarEl.classList.toggle('rune-correct', revealPartial && runeCorrect);
+    pillarEl.classList.toggle('direction-correct', revealPartial && directionCorrect);
+    pillarEl.classList.toggle('pillar-complete', revealComplete && complete);
   });
 
   elements.tidalAttemptLabel.textContent = `Attempts: ${tidalState.attempts}`;
   renderTidalProgress();
+  renderTidalBasin();
+  renderTidalControls();
+  updateTidalPressureUI();
 }
 
 function renderTidalProgress() {
@@ -773,14 +902,12 @@ function renderTidalProgress() {
     const runeCorrect = rune === solution.rune;
     const directionCorrect = direction === solution.direction;
     const complete = runeCorrect && directionCorrect;
+    const revealComplete = tidalState.solved || (tidalState.feedbackActive && ['complete', 'partial'].includes(tidalState.feedbackMode));
+    const revealPartial = tidalState.solved || (tidalState.feedbackActive && tidalState.feedbackMode === 'partial');
 
-    if (tidalState.feedbackActive || tidalState.solved) {
-      pip.classList.toggle('rune-correct', runeCorrect);
-      pip.classList.toggle('direction-correct', directionCorrect);
-      pip.classList.toggle('complete', complete);
-    } else {
-      pip.classList.remove('rune-correct', 'direction-correct', 'complete');
-    }
+    pip.classList.toggle('rune-correct', revealPartial && runeCorrect);
+    pip.classList.toggle('direction-correct', revealPartial && directionCorrect);
+    pip.classList.toggle('complete', revealComplete && complete);
   });
 }
 
@@ -794,7 +921,17 @@ function getTidalCorrectCount() {
   }, 0);
 }
 
-function isTidalSolved() {
+function getTidalCompletePillarCount() {
+  return TIDAL_PILLAR_ORDER.reduce((total, id) => {
+    const state = tidalState.pillars[id];
+    const rune = TIDAL_RUNES[state.runeIndex];
+    const direction = TIDAL_DIRECTIONS[state.directionIndex];
+    const solution = TIDAL_SOLUTION[id];
+    return total + (rune === solution.rune && direction === solution.direction ? 1 : 0);
+  }, 0);
+}
+
+function isTidalOuterSolved() {
   return TIDAL_PILLAR_ORDER.every(id => {
     const state = tidalState.pillars[id];
     const rune = TIDAL_RUNES[state.runeIndex];
@@ -804,12 +941,13 @@ function isTidalSolved() {
   });
 }
 
+function isTidalSolved() {
+  return isTidalOuterSolved() && TIDAL_RUNES[tidalState.basinRuneIndex] === TIDAL_BASIN_SOLUTION;
+}
+
 function setTidalControlsEnabled(enabled) {
   tidalState.locked = !enabled;
-  elements.tidalRuneButtons.forEach(button => { button.disabled = !enabled; });
-  elements.tidalArrowButtons.forEach(button => { button.disabled = !enabled; });
-  elements.checkTidalButton.disabled = !enabled;
-  elements.randomiseTidalButton.disabled = !enabled;
+  renderTidalControls();
 }
 
 function showTidalEvent(title, text, duration = 1450) {
@@ -830,16 +968,40 @@ function showTidalEvent(title, text, duration = 1450) {
   }, duration);
 }
 
+function resetTidalSequenceActive({ keepAttempts = false } = {}) {
+  tidalState.phase = 'outer';
+  tidalState.solved = false;
+  tidalState.locked = false;
+  tidalState.pressure = 0;
+  tidalState.feedbackActive = false;
+  tidalState.feedbackMode = 'none';
+  tidalState.basinRuneIndex = TIDAL_BASIN_START_INDEX;
+
+  if (!keepAttempts) {
+    tidalState.attempts = 0;
+  }
+
+  tidalState.pillars = structuredCloneSafe(TIDAL_START);
+  document.body.classList.remove('tidal-solved', 'screen-flash', 'tidal-pressure-1', 'tidal-pressure-2', 'tidal-pressure-3', 'tidal-pressure-4');
+  elements.tidalFrame.classList.remove('tidal-pulse', 'deep-tremor', 'shake');
+  resetTidalFeedback();
+  renderTidalPillars();
+}
+
 function resetTidalToIdle() {
   tidalState.started = false;
   tidalState.solved = false;
   tidalState.locked = true;
+  tidalState.phase = 'idle';
   tidalState.attempts = 0;
+  tidalState.pressure = 0;
   tidalState.feedbackActive = false;
+  tidalState.feedbackMode = 'none';
   tidalState.runToken += 1;
+  tidalState.basinRuneIndex = TIDAL_BASIN_START_INDEX;
   tidalState.pillars = structuredCloneSafe(TIDAL_START);
 
-  document.body.classList.remove('tidal-started', 'tidal-solved', 'screen-flash', 'stage-solved', 'round-awake-1', 'round-awake-2');
+  document.body.classList.remove('tidal-started', 'tidal-solved', 'screen-flash', 'stage-solved', 'round-awake-1', 'round-awake-2', 'tidal-pressure-1', 'tidal-pressure-2', 'tidal-pressure-3', 'tidal-pressure-4');
   elements.tidalFrame.classList.remove('tidal-pulse', 'deep-tremor', 'shake');
   elements.tidalEventOverlay.classList.remove('active');
   elements.tidalEventOverlay.classList.add('hidden');
@@ -850,30 +1012,25 @@ function resetTidalToIdle() {
   renderTidalPillars();
 
   elements.clueText.textContent = 'The pillars are dormant. Each one carries a rune-face and a flow notch. The central basin is dark.';
-  elements.tidalDescription.textContent = 'Press BEGIN to wake the chamber. Then rotate each pillar rune and arrow to restore the flow.';
+  elements.tidalDescription.textContent = 'Press BEGIN to wake the chamber. Then restore the outer current before naming the basin.';
   setStatus('Awaiting the sequence', 'Press BEGIN to open the Tidal Sequence instructions.');
 }
 
 function startTidalSequence() {
   closeModal(elements.tidalRulesModal);
   tidalState.started = true;
-  tidalState.solved = false;
-  tidalState.locked = false;
-  tidalState.feedbackActive = false;
+  resetTidalSequenceActive();
   document.body.classList.add('tidal-started');
   document.body.classList.remove('tidal-solved');
-  setTidalControlsEnabled(true);
-  resetTidalFeedback();
-  renderTidalPillars();
   safePlay(audio.runePlace);
 
   elements.clueText.textContent = 'Ancient text nearby reads: Flow follows memory. Memory seeks depth. Depth breaks upon stone. Stone returns the current.';
-  elements.tidalDescription.textContent = 'Create the clockwise current: top-left → top-right → bottom-right → bottom-left → top-left.';
+  elements.tidalDescription.textContent = 'Phase I: create the clockwise current: top-left → top-right → bottom-right → bottom-left → top-left.';
   setStatus('The chamber wakes', 'The pillars unlock. Rotate their runes and arrows, then check the alignment.');
 }
 
 function rotateTidalRune(id) {
-  if (tidalState.locked || tidalState.solved) return;
+  if (tidalState.locked || tidalState.solved || tidalState.phase !== 'outer') return;
   const pillar = tidalState.pillars[id];
   pillar.runeIndex = (pillar.runeIndex + 1) % TIDAL_RUNES.length;
   resetTidalFeedback();
@@ -883,7 +1040,7 @@ function rotateTidalRune(id) {
 }
 
 function rotateTidalDirection(id) {
-  if (tidalState.locked || tidalState.solved) return;
+  if (tidalState.locked || tidalState.solved || tidalState.phase !== 'outer') return;
   const pillar = tidalState.pillars[id];
   pillar.directionIndex = (pillar.directionIndex + 1) % TIDAL_DIRECTIONS.length;
   resetTidalFeedback();
@@ -892,8 +1049,18 @@ function rotateTidalDirection(id) {
   setStatus('Flow rotated', `${getLabelFromId(id)} now points ${TIDAL_DIRECTIONS[pillar.directionIndex]}.`);
 }
 
+function rotateBasinRune() {
+  if (tidalState.locked || tidalState.solved || tidalState.phase !== 'basin') return;
+  tidalState.basinRuneIndex = (tidalState.basinRuneIndex + 1) % TIDAL_RUNES.length;
+  tidalState.feedbackActive = false;
+  renderTidalBasin();
+  renderTidalControls();
+  safePlay(audio.runeClick);
+  setStatus('Basin rune rotated', `The central basin now bears the ${getLabelFromId(TIDAL_RUNES[tidalState.basinRuneIndex])} rune.`);
+}
+
 function randomiseTidalPillars() {
-  if (tidalState.locked || tidalState.solved) return;
+  if (tidalState.locked || tidalState.solved || tidalState.phase !== 'outer') return;
 
   do {
     TIDAL_PILLAR_ORDER.forEach(id => {
@@ -902,7 +1069,7 @@ function randomiseTidalPillars() {
         directionIndex: Math.floor(Math.random() * TIDAL_DIRECTIONS.length)
       };
     });
-  } while (isTidalSolved());
+  } while (isTidalOuterSolved());
 
   resetTidalFeedback();
   renderTidalPillars();
@@ -910,45 +1077,118 @@ function randomiseTidalPillars() {
   setStatus('The pillars shuffle', 'The chamber grinds as the rune-faces turn to new positions.');
 }
 
-function checkTidalAlignment() {
-  if (tidalState.locked || tidalState.solved) return;
+function increaseTidalPressure(reasonText = '') {
+  tidalState.pressure = Math.min(TIDAL_MAX_PRESSURE, tidalState.pressure + 1);
+  const pressureState = getTidalPressureState();
 
-  tidalState.feedbackActive = true;
-  tidalState.attempts += 1;
-  renderTidalPillars();
+  updateTidalPressureUI();
+  safePlay(audio[pressureState.sound]);
 
-  const correctCount = getTidalCorrectCount();
-
-  if (isTidalSolved()) {
-    solveTidalSequence();
-    return;
-  }
-
-  safePlay(audio.puzzleFail);
   elements.tidalFrame.classList.add('shake');
   window.setTimeout(() => elements.tidalFrame.classList.remove('shake'), 540);
 
-  const copy = TIDAL_ATTEMPT_COPY[Math.min(tidalState.attempts - 1, TIDAL_ATTEMPT_COPY.length - 1)];
-  const correctText = `${correctCount} of 8 alignments are currently correct.`;
-  showTidalEvent(copy.title, correctText, 1500);
+  const extraText = reasonText ? `${reasonText} ` : '';
+  showTidalEvent(pressureState.title, `${extraText}${pressureState.text}`, 1700);
+  elements.clueText.textContent = `${pressureState.text} ${pressureState.effect}`;
+  setStatus('Pressure rises', pressureState.status);
 
-  elements.clueText.textContent = `${copy.text} ${correctText}`;
-  setStatus('Alignment incomplete', copy.status);
+  if (tidalState.pressure >= TIDAL_MAX_PRESSURE) {
+    tidalState.locked = true;
+    renderTidalControls();
+    safePlay(audio.puzzleFail);
+    triggerDeepTremor(elements.tidalFrame, 1100);
+
+    window.setTimeout(() => {
+      resetTidalSequenceActive({ keepAttempts: true });
+      safePlay(audio.runePlace);
+      elements.clueText.textContent = 'The surge vents through the chamber. The basin goes dark and the outer pillars return to their starting disorder.';
+      elements.tidalDescription.textContent = 'The Tidal Sequence has reset. Restore the outer current again before the chamber grows restless.';
+      setStatus('The chamber resets', 'The pressure vents violently. The sequence must be rebuilt from the beginning.');
+    }, 1900);
+  }
+}
+
+function unlockTidalBasinPhase() {
+  tidalState.phase = 'basin';
+  tidalState.feedbackActive = true;
+  tidalState.feedbackMode = 'partial';
+  tidalState.basinRuneIndex = TIDAL_BASIN_START_INDEX;
+  renderTidalPillars();
+  renderTidalBasin();
+  renderTidalControls();
+
+  safePlay(audio.basinWake);
+  safePlay(audio.puzzleSolve);
+  document.body.classList.add('screen-flash');
+  showTidalEvent('THE OUTER CURRENT CLOSES', 'The four pillars lock. The basin wakes and waits to be named.', 1900);
+
+  setStatus('The basin wakes', 'The outer flow is correct. Now choose the final principle that completes the sequence at the centre.');
+  elements.clueText.textContent = 'The inscription’s final line presses into your thoughts: Stone does not end the path. Stone returns the Current.';
+  elements.tidalDescription.textContent = 'Phase II: click the central basin rune until it shows the final principle, then choose ATTUNE BASIN.';
+
+  window.setTimeout(() => document.body.classList.remove('screen-flash'), 760);
+}
+
+function checkTidalAlignment() {
+  if (tidalState.locked || tidalState.solved) return;
+
+  tidalState.attempts += 1;
+
+  if (tidalState.phase === 'outer') {
+    if (isTidalOuterSolved()) {
+      unlockTidalBasinPhase();
+      return;
+    }
+
+    tidalState.feedbackActive = true;
+    const nextPressure = Math.min(TIDAL_MAX_PRESSURE, tidalState.pressure + 1);
+    tidalState.feedbackMode = nextPressure <= 1 ? 'none' : nextPressure === 2 ? 'complete' : 'partial';
+    renderTidalPillars();
+
+    const completePillars = getTidalCompletePillarCount();
+    const correctCount = getTidalCorrectCount();
+    let clue = 'The current fails to close.';
+
+    if (nextPressure === 2) {
+      clue = `${completePillars} of 4 pillars are fully aligned.`;
+    } else if (nextPressure >= 3) {
+      clue = `${correctCount} of 8 rune-or-direction alignments are correct.`;
+    }
+
+    safePlay(audio.puzzleFail);
+    increaseTidalPressure(clue);
+    return;
+  }
+
+  if (tidalState.phase === 'basin') {
+    tidalState.feedbackActive = true;
+    renderTidalBasin();
+
+    if (TIDAL_RUNES[tidalState.basinRuneIndex] === TIDAL_BASIN_SOLUTION) {
+      solveTidalSequence();
+      return;
+    }
+
+    safePlay(audio.puzzleFail);
+    increaseTidalPressure('The basin rejects the chosen name.');
+  }
 }
 
 function solveTidalSequence() {
   tidalState.solved = true;
   tidalState.locked = true;
+  tidalState.phase = 'solved';
   tidalState.feedbackActive = true;
+  tidalState.feedbackMode = 'partial';
   setTidalControlsEnabled(false);
   renderTidalPillars();
 
   safePlay(audio.puzzleSolve);
   document.body.classList.add('tidal-solved', 'screen-flash');
-  showTidalEvent('THE CURRENT COMPLETES', 'The basin fills without source.', 1800);
+  showTidalEvent('THE CURRENT COMPLETES', 'The basin accepts the Current. Water rises upward in a perfect ring.', 1900);
 
-  setStatus('The current completes', 'The four pillars lock into a closed clockwise flow. The basin begins to glow from below.');
-  elements.clueText.textContent = 'The room accepts the sequence: Flow remembers Echo, Echo sinks to Depth, Depth breaks upon Stone, and Stone returns the Current.';
+  setStatus('The current completes', 'The four pillars and central basin lock into a single flowing sequence. The chamber begins to open.');
+  elements.clueText.textContent = 'The room accepts the full sequence: Flow remembers Echo, Echo sinks to Depth, Depth breaks upon Stone, and Stone returns the Current.';
 
   window.setTimeout(() => {
     setStatus('Water rises upward', 'The suspended streams overhead reverse direction, pouring into the basin from below.');
@@ -1020,6 +1260,8 @@ elements.tidalRuneButtons.forEach(button => {
 elements.tidalArrowButtons.forEach(button => {
   button.addEventListener('click', () => rotateTidalDirection(button.dataset.pillar));
 });
+
+elements.basinRuneButton?.addEventListener('click', rotateBasinRune);
 
 elements.checkTidalButton.addEventListener('click', checkTidalAlignment);
 elements.randomiseTidalButton.addEventListener('click', randomiseTidalPillars);
